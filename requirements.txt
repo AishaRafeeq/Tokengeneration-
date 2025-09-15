@@ -1,0 +1,22 @@
+Django>=4.2
+djangorestframework
+djangorestframework-simplejwt
+channels
+daphne
+Pillow
+psycopg2-binary
+django-cors-headers
+django-filter
+qrcode
+drf-yasg
+python-dotenv
+# For QR code image generation and manipulation
+reportlab
+# For admin UI enhancements (optional)
+django-admin-interface
+# For async tasks (optional, if used)
+celery
+# For testing (optional)
+pytest
+pytest-django
+# Add any other dependencies your project uses below
