@@ -4,16 +4,16 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Set work directory
 WORKDIR /app
 
-# Add this line to avoid interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install system dependencies
-RUN apt-get update \
+# Fix for some slim images: install dependencies for HTTPS and certificates
+RUN apt-get update --fix-missing \
     && apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        ca-certificates \
         build-essential \
         libpq-dev \
         netcat \
