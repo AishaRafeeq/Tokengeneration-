@@ -39,4 +39,4 @@ USER appuser
 EXPOSE 8000
 
 # Start Daphne ASGI server
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "qr_token_system.asgi:application"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
