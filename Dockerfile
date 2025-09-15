@@ -29,7 +29,7 @@ RUN pip install -r requirements.txt
 COPY . ./
 RUN python manage.py collectstatic --noinput
 
-RUN mkdir -p /app/media
+RUN mkdir -p /app/media /app/media/qr_codes
 # If you use a non-root user, also:
 # RUN chown -R appuser:appuser /app/media
 

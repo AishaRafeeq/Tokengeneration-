@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db.models import Max
 from users.models import Category
 from django.utils.crypto import get_random_string
+import logging
 
 
 class Token(models.Model):
@@ -44,22 +45,26 @@ class Token(models.Model):
 
         # Auto-generate QR code only if it doesn't exist
         if is_new and not hasattr(self, "qr_code"):
-            from .utils import generate_qr_code
-            from .models import QRSettings, QRCode
+            try:
+                from .utils import generate_qr_code
+                from .models import QRSettings, QRCode
 
-            qr_settings = QRSettings.objects.first()
-            qr_data, checksum, file = generate_qr_code(self, qr_settings)
+                qr_settings = QRSettings.objects.first()
+                qr_data, checksum, file = generate_qr_code(self, qr_settings)
 
-            QRCode.objects.create(
-                token=self,
-                category=self.category,
-                expires_at=qr_data["expires_at"],
-                checksum=checksum,
-                payload=qr_data,  # ✅ Serializable JSON
-                image=file,
-                format=qr_settings.default_format if qr_settings else 'PNG',
-                created_by=self.issued_by
-            )
+                QRCode.objects.create(
+                    token=self,
+                    category=self.category,
+                    expires_at=qr_data["expires_at"],
+                    checksum=checksum,
+                    payload=qr_data,  # ✅ Serializable JSON
+                    image=file,
+                    format=qr_settings.default_format if qr_settings else 'PNG',
+                    created_by=self.issued_by
+                )
+            except Exception as e:
+                logging.exception("Error generating QR code for Token")
+                raise
 
     def __str__(self):
         return f"{self.token_id} ({self.category}) - {self.status}"
