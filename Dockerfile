@@ -26,20 +26,18 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 
+# ... earlier steps (install deps, copy code, collectstatic)
 COPY . ./
+
 RUN python manage.py collectstatic --noinput
 
-RUN mkdir -p /app/media/qrcodes
+# create media dir and give ownership to appuser
+RUN mkdir -p /app/media/qrcodes \
+    && adduser --disabled-password --no-create-home appuser \
+    && chown -R appuser:appuser /app/media /app/staticfiles
 
-# If you use a non-root user, also:
-# RUN chown -R appuser:appuser /app/media
-
-
-RUN adduser --disabled-password --no-create-home appuser
+# switch to non-root user
 USER appuser
 
-
 EXPOSE 8000
-
-
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
