@@ -68,6 +68,7 @@ AUTH_USER_MODEL = 'users.User'  # Custom User model
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # ✅ must be first
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this line
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
