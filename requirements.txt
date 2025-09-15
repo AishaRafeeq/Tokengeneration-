@@ -20,5 +20,7 @@ celery
 pytest
 pytest-django
 
+dj_database_url
+
 whitenoise
 # Add any other dependencies your project uses below
