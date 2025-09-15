@@ -57,8 +57,8 @@ class Token(models.Model):
                     category=self.category,
                     expires_at=qr_data["expires_at"],
                     checksum=checksum,
-                    payload=qr_data,  # ✅ Serializable JSON
-                    image=file,
+                    payload=qr_data,
+                    image=file,  # file should be 'qrcodes/filename.png'
                     format=qr_settings.default_format if qr_settings else 'PNG',
                     created_by=self.issued_by
                 )

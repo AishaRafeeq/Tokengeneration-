@@ -5,6 +5,8 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import QRSettings
 import qrcode
+import os
+from django.conf import settings
 
 def generate_qr_code(token_obj, qr_settings=None):
     # Use defaults if qr_settings is None
@@ -54,4 +56,11 @@ def generate_qr_code(token_obj, qr_settings=None):
     buffer = BytesIO()
     img.save(buffer, format=default_format)
     file = ContentFile(buffer.getvalue(), name=f"qrcode_{token_obj.token_id}.{(default_format).lower()}")
-    return qr_data, checksum, file
+
+    filename = f"{token_obj.token_id}.png"
+    qr_dir = os.path.join(settings.MEDIA_ROOT, 'qrcodes')
+    os.makedirs(qr_dir, exist_ok=True)  # Ensure directory exists
+    file_path = os.path.join(qr_dir, filename)
+    img.save(file_path, format='PNG')
+    # Return a relative path for ImageField
+    return qr_data, checksum, f"qrcodes/{filename}"
