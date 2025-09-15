@@ -9,8 +9,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from rest_framework.routers import DefaultRouter
+from tokens.views import TokenViewSet
 
 router = DefaultRouter()
+router.register(r'tokens', TokenViewSet, basename='token')
 
 
 urlpatterns = [
