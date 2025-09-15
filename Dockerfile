@@ -28,12 +28,12 @@ RUN pip install -r requirements.txt
 # Copy project files
 COPY . ./
 
+# Collect static files as root
+RUN python manage.py collectstatic --noinput
+
 # Create a non-root user and switch to it (optional but recommended)
 RUN adduser --disabled-password --no-create-home appuser
 USER appuser
-
-# Collect static files
-RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000
