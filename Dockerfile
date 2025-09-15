@@ -21,12 +21,12 @@ RUN apt-get update --fix-missing \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY ./qr_token_system/requirements.txt ./
+COPY requirements.txt ./
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy project files
-COPY ./qr_token_system/ ./
+COPY . ./
 
 # Create a non-root user and switch to it (optional but recommended)
 RUN adduser --disabled-password --no-create-home appuser
