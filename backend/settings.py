@@ -161,5 +161,6 @@ REST_FRAMEWORK = {
 
 CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-backend.onrender.com",
+    "https://tokengeneration-backend-1.onrender.com",
 ]
 
