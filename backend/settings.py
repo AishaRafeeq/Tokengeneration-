@@ -26,7 +26,11 @@ SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "tokengeneration-backend.onrender.com",
+]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React frontend (default Vite port)
