@@ -16,7 +16,7 @@ RUN apt-get update --fix-missing \
         ca-certificates \
         build-essential \
         libpq-dev \
-        netcat \
+        netcat-openbsd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
