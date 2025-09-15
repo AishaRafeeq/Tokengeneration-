@@ -47,24 +47,21 @@ class Token(models.Model):
         if is_new and not hasattr(self, "qr_code"):
             try:
                 from .utils import generate_qr_code
-                from .models import QRSettings, QRCode
-
                 qr_settings = QRSettings.objects.first()
-                qr_data, checksum, file = generate_qr_code(self, qr_settings)
-
+                qr_data, checksum, file_path = generate_qr_code(self, qr_settings)
                 QRCode.objects.create(
                     token=self,
                     category=self.category,
                     expires_at=qr_data["expires_at"],
                     checksum=checksum,
                     payload=qr_data,
-                    image=file,  # file should be 'qrcodes/filename.png'
+                    image=file_path,
                     format=qr_settings.default_format if qr_settings else 'PNG',
                     created_by=self.issued_by
                 )
             except Exception as e:
-                logging.exception("Error generating QR code for Token")
-                raise
+                logging.exception("QR generation failed for token %s", self.token_id)
+                # Optionally: continue without QR or raise a custom exception
 
     def __str__(self):
         return f"{self.token_id} ({self.category}) - {self.status}"
