@@ -19,4 +19,6 @@ celery
 # For testing (optional)
 pytest
 pytest-django
+
+whitenoise
 # Add any other dependencies your project uses below
