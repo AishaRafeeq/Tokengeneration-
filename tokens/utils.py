@@ -5,7 +5,6 @@ import qrcode
 import hashlib
 from django.utils import timezone
 from datetime import timedelta
-from .models import QRSettings
 
 def generate_qr_code(token_obj, qr_settings=None):
     # Sensible defaults
