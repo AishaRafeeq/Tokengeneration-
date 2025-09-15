@@ -29,6 +29,10 @@ RUN pip install -r requirements.txt
 COPY . ./
 RUN python manage.py collectstatic --noinput
 
+RUN mkdir -p /app/media
+# If you use a non-root user, also:
+# RUN chown -R appuser:appuser /app/media
+
 
 RUN adduser --disabled-password --no-create-home appuser
 USER appuser
