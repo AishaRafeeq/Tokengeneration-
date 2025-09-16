@@ -5,6 +5,7 @@ import qrcode
 import hashlib
 from django.utils import timezone
 from datetime import timedelta
+from PIL import Image
 
 def generate_qr_code(token_obj, qr_settings=None):
     # Sensible defaults
@@ -58,3 +59,13 @@ def generate_qr_code(token_obj, qr_settings=None):
     saved_path = default_storage.save(filename, content)
 
     return qr_data, checksum, saved_path  # saved_path is 'qrcodes/qrcode_A001.png'
+
+def generate_colored_qr_code(data, color="#007BFF"):
+    qr_img = qrcode.make(data)
+    qr_img = qr_img.convert("RGBA")
+    border_size = 20
+    bg = Image.new("RGBA", (qr_img.width + border_size*2, qr_img.height + border_size*2), color)
+    bg.paste(qr_img, (border_size, border_size))
+    buffer = BytesIO()
+    bg.save(buffer, format="PNG")
+    return buffer

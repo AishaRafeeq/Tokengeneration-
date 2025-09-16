@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db import models
+from django.utils.html import format_html
 from .models import Token, QRCode, QRScan, QRSettings
 from .utils import generate_qr_code
 from .models import QRSettings as QRSettingsModel
@@ -63,9 +64,22 @@ class TokenAdmin(admin.ModelAdmin):
 
 @admin.register(QRCode)
 class QRCodeAdmin(admin.ModelAdmin):
-    list_display = ['token', 'category', 'generated_at', 'expires_at', 'format']
-    search_fields = ['token__token_id', 'checksum']
-    list_filter = ['format', 'category']
+    list_display = ['id', 'token', 'category', 'category_color', 'qr_image_tag', 'expires_at']
+    readonly_fields = ['qr_image_tag']
+
+    def category_color(self, obj):
+        color = obj.category.color if hasattr(obj.category, 'color') else "#000000"
+        return format_html(
+            '<span style="display:inline-block;width:24px;height:24px;background:{};border-radius:4px;border:1px solid #ccc;margin-right:8px;"></span> {}',
+            color, color
+        )
+    category_color.short_description = "Category Color"
+
+    def qr_image_tag(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width:80px;height:80px;border-radius:8px;border:1px solid #ccc;" />', obj.image.url)
+        return "-"
+    qr_image_tag.short_description = "QR Code"
 
 
 @admin.register(QRScan)

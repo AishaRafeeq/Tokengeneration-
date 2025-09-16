@@ -3,6 +3,8 @@ from .models import Token, QRCode, QRScan, QRSettings, QRTemplate, AuditLog
 from .utils import generate_qr_code
 from django.utils import timezone
 from django.core.files.base import ContentFile
+import qrcode
+from io import BytesIO
 
 
 # ----------------------------
@@ -39,17 +41,19 @@ from rest_framework import serializers
 from .models import QRCode
 
 class QRCodeSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
-
     class Meta:
         model = QRCode
-        fields = ["id", "image"]
+        fields = ['id', 'token', 'category', 'image', 'expires_at', 'data', 'generated_at']
 
-    def get_image(self, obj):
-        request = self.context.get("request")
-        if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+    def create(self, validated_data):
+        # Generate QR code image with the 'data' field
+        qr_data = validated_data.get('data')
+        qr_img = qrcode.make(qr_data)
+        buffer = BytesIO()
+        qr_img.save(buffer, format="PNG")
+        file_name = f"qr_{validated_data['token'].id}_{validated_data['category'].id}.png"
+        validated_data['image'] = ContentFile(buffer.getvalue(), file_name)
+        return super().create(validated_data)
 
 
 # ----------------------------

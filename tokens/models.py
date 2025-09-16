@@ -57,7 +57,8 @@ class Token(models.Model):
                     payload=qr_data,
                     image=file_path,
                     format=qr_settings.default_format if qr_settings else 'PNG',
-                    created_by=self.issued_by
+                    created_by=self.issued_by,
+                    data=self.token_id  # <-- This is critical!
                 )
             except Exception as e:
                 logging.exception("QR generation failed for token %s", self.token_id)
@@ -89,24 +90,21 @@ class QRSettings(models.Model):
 
 
 class QRCode(models.Model):
-    token = models.OneToOneField(Token, on_delete=models.CASCADE, related_name="qr_code")
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
-    generated_at = models.DateTimeField(default=timezone.now)
-    expires_at = models.DateTimeField()
-    checksum = models.CharField(max_length=128)
-    payload = models.JSONField(default=dict)
+    token = models.ForeignKey('Token', on_delete=models.CASCADE, related_name='qrcodes')
+    category = models.ForeignKey('users.Category', on_delete=models.CASCADE, default=1)
     image = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
-    format = models.CharField(max_length=10, default='PNG')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
-    data = models.TextField(blank=True, null=True)
-    status = models.CharField(
-        max_length=20,
-        choices=(('VALID', 'VALID'), ('EXPIRED', 'EXPIRED'), ('INVALID', 'INVALID')),
-        default='VALID'
+    expires_at = models.DateTimeField(null=True, blank=True)
+    data = models.CharField(max_length=128, default="UNKNOWN")
+    checksum = models.CharField(max_length=128, blank=True, null=True)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    payload = models.JSONField(default=dict, blank=True)  # If you want to store QR payload
+    format = models.CharField(max_length=10, default='PNG')  # For QR image format
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )
 
     def __str__(self):
-        return f"QR for {self.token.token_id} ({self.checksum[:8]})"
+        return f"QR for {self.token} (expires {self.expires_at})"
 
 
 class QRScan(models.Model):

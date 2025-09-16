@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db.models import Count
 from datetime import date, timedelta
 from django.utils.crypto import get_random_string
+from django.core.files.base import ContentFile
 
 from .models import Token, QRCode, QRScan, QRSettings, QRTemplate, AuditLog
 from .serializers import (
@@ -22,6 +23,7 @@ from .serializers import (
     VerificationLogSerializer,
 )
 from users.models import Category
+from .utils import generate_colored_qr_code
 
 # ----------------------------
 # Token ViewSet
@@ -135,14 +137,22 @@ class TokenViewSet(viewsets.ModelViewSet):
             return Response({"error": "Invalid category"}, status=400)
         token = Token.objects.create(category=category, status="waiting")
         expires_at = timezone.now() + timedelta(hours=24)
-        # Check if QRCode already exists for this token
-        qr_code, created = QRCode.objects.get_or_create(
+
+        # Generate QR code with category color
+        qr_data = token.token_id
+        color = category.color if hasattr(category, "color") else "#007BFF"
+        qr_buffer = generate_colored_qr_code(qr_data, color)
+        file_name = f"qr_{token.token_id}.png"
+
+        # Save QR image to QRCode model
+        qr_code = QRCode.objects.create(
             token=token,
-            defaults={
-                "category": category,
-                "expires_at": expires_at,
-            }
+            category=category,
+            expires_at=expires_at,
+            data=qr_data,
         )
+        qr_code.image.save(file_name, ContentFile(qr_buffer.getvalue()), save=True)
+
         qr_data = QRCodeSerializer(qr_code, context={"request": request}).data
         return Response({
             "token": {
@@ -152,9 +162,47 @@ class TokenViewSet(viewsets.ModelViewSet):
                     "id": category.id,
                     "name": category.name,
                 },
+                "queue_position": token.queue_position,
             },
             "qr_code": qr_data,
         }, status=201)
+
+    @action(detail=False, methods=['get'], url_path='public/(?P<token_id>[^/.]+)')
+    def public(self, request, token_id=None):
+        try:
+            token = Token.objects.get(token_id=token_id)
+            # Always get the latest QRCode for this token
+            qr_code = QRCode.objects.filter(token=token).order_by('-id').first()
+            return Response({
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": token.category.id,
+                    "name": token.category.name,
+                },
+                "queue_position": token.queue_position,
+                "qr_image": request.build_absolute_uri(qr_code.image.url) if qr_code and qr_code.image else None,
+            })
+        except Token.DoesNotExist:
+            return Response({"detail": "Invalid QR Code"}, status=404)
+
+    @action(detail=True, methods=['get'], url_path='public-qr')
+    def public_qr(self, request, pk=None):
+        try:
+            qr_code = QRCode.objects.get(pk=pk)
+            token = qr_code.token
+            return Response({
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": token.category.id,
+                    "name": token.category.name,
+                },
+                "queue_position": token.queue_position,
+                "qr_image": qr_code.image.url if qr_code.image else None,
+            })
+        except Exception:
+            return Response({"detail": "Invalid QR Code"}, status=404)
 
 # ----------------------------
 # QRCode ViewSet
