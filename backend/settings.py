@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "tokengeneration-backend.onrender.com",
     "tokengeneration-backend-1.onrender.com",
+    "https://public-token-generate.netlify.app"
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -169,6 +170,7 @@ REST_FRAMEWORK = {
 CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-backend.onrender.com",
     "https://tokengeneration-backend-1.onrender.com",
+    "https://public-token-generate.netlify.app"
 ]
 
 MEDIA_URL = '/media/'
