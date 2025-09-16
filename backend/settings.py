@@ -40,7 +40,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5174",
     "http://localhost:3000",
     "https://public-token-generate.netlify.app",
-    "https://public-display.netlify.app",  # <-- Add this line
+    "https://public-display.netlify.app", 
+     "https://token-public-display.netlify.app," # <-- Add this line
 ]
 
 
