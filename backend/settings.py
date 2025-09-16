@@ -99,7 +99,7 @@ AUTH_USER_MODEL = 'users.User'  # Custom User model
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # ✅ must be first
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this line
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -204,4 +204,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Add this to set CORS headers for static/media files
+WHITENOISE_ADD_HEADERS_FUNCTION = "backend.whitenoise_headers.add_headers"
 
