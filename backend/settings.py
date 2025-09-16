@@ -44,6 +44,32 @@ CORS_ALLOWED_ORIGINS = [
      "https://token-public-display.netlify.app," # <-- Add this line
 ]
 
+CORS_ALLOW_ALL_ORIGINS = False  # (recommended for production)
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "access-control-allow-origin",
+]
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+CORS_EXPOSE_HEADERS = [
+    "Content-Type",
+    "Access-Control-Allow-Origin",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 
