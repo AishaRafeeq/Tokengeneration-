@@ -40,8 +40,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5174",
     "http://localhost:3000",
     "https://public-token-generate.netlify.app",
-    "https://public-display.netlify.app", 
-     "https://token-public-display.netlify.app," # <-- Add this line
+    "https://public-display.netlify.app",
+    "https://token-public-display.netlify.app",  # <-- Corrected line
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False  # (recommended for production)
@@ -207,4 +207,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Add this to set CORS headers for static/media files
 WHITENOISE_ADD_HEADERS_FUNCTION = "backend.whitenoise_headers.add_headers"
+
+def add_headers(headers, path, url):
+    headers["Access-Control-Allow-Origin"] = "*"
 
