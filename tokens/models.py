@@ -21,9 +21,13 @@ class Token(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='waiting')
     issued_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    issued_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="tokens_created"
     )
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="tokens_issued"
+    )
+    source = models.CharField(max_length=20, default="public")  # "admin" or "public"
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None

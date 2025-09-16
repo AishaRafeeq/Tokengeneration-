@@ -4,6 +4,9 @@ from django.utils.html import format_html
 from .models import Token, QRCode, QRScan, QRSettings
 from .utils import generate_qr_code
 from .models import QRSettings as QRSettingsModel
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .serializers import TokenSerializer  # Ensure you have this serializer
 
 @admin.register(Token)
 class TokenAdmin(admin.ModelAdmin):
@@ -60,6 +63,12 @@ class TokenAdmin(admin.ModelAdmin):
                 format=format_value,
                 created_by=obj.issued_by
             )
+
+    # Example for a custom admin view or API endpoint
+    @action(detail=False, methods=["get"], url_path="admin-tokens")
+    def admin_tokens(self, request):
+        tokens = Token.objects.filter(source="admin").order_by("-issued_at")
+        return Response(TokenSerializer(tokens, many=True).data)
 
 
 @admin.register(QRCode)

@@ -22,12 +22,21 @@ class TokenSerializer(serializers.ModelSerializer):
         fields = ["id", "token_id", "category", "category_name", "status", "issued_at", "qr_code"]
 
     def get_qr_code(self, obj):
-        if hasattr(obj, 'qr_code'):
-            return {
-                "image": obj.qr_code.image.url if obj.qr_code.image else None,
-                "payload": obj.qr_code.payload,
-            }
+        qr = obj.qrcodes.order_by('-id').first()  # Get latest QRCode
+        if qr:
+          request = self.context.get("request", None)  # get request safely
+        if qr.image:
+            image_url = request.build_absolute_uri(qr.image.url) if request else qr.image.url
+        else:
+            image_url = None
+        return {
+            "image": image_url,
+            "payload": qr.payload,
+            "expires_at": qr.expires_at,
+        }
         return None
+
+
 
     def create(self, validated_data):
         # Token.save() will auto-generate the QRCode
