@@ -1,16 +1,15 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser
 from django.utils import timezone
 from django.http import FileResponse
 from django.conf import settings
 from django.db.models import Count
-from datetime import date
+from datetime import date, timedelta
 from django.utils.crypto import get_random_string
 
-from rest_framework.permissions import AllowAny
 from .models import Token, QRCode, QRScan, QRSettings, QRTemplate, AuditLog
 from .serializers import (
     TokenSerializer,
@@ -23,118 +22,58 @@ from .serializers import (
     VerificationLogSerializer,
 )
 from users.models import Category
-from rest_framework.authentication import SessionAuthentication
-
 
 # ----------------------------
 # Token ViewSet
 # ----------------------------
-# ----------------------------
-# Token ViewSet
-# ----------------------------
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # Bypass CSRF check
-
-from rest_framework.permissions import BasePermission
-
-class IsStaffOrAdmin(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user and
-            request.user.is_authenticated and
-            getattr(request.user, "role", None) in ["admin", "staff"]
-        )
 class TokenViewSet(viewsets.ModelViewSet):
     queryset = Token.objects.all().order_by("queue_position")
     serializer_class = TokenSerializer
-    permission_classes = [AllowAny]  # <--- This allows anyone to create/list tokens
-    authentication_classes = [CsrfExemptSessionAuthentication]  # <--- Add this
+    permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["token_id", "category__name", "status"]
     ordering_fields = ["issued_at", "queue_position"]
-    
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        # Admins see all, staff see only their categories
-        if user.is_authenticated and getattr(user, "role", None) == "admin":
-            return qs.filter(status__in=["waiting", "called"]).order_by("queue_position")
-        elif user.is_authenticated:
-            return qs.filter(
-                status__in=["waiting", "called"],
-                category__in=user.categories.all()
-            ).order_by("queue_position")
-        # Unauthenticated: show all (or restrict as needed)
-        return qs.filter(status__in=["waiting", "called"]).order_by("queue_position")
 
-    # -----------------------
-    # Active tokens (waiting + called)
-    # -----------------------
+    def get_queryset(self):
+        return super().get_queryset().filter(status__in=["waiting", "called"]).order_by("queue_position")
+
     @action(detail=False, methods=["get"])
     def active(self, request):
         tokens = self.get_queryset().filter(status__in=["waiting", "called"]).order_by("queue_position")
         return Response(TokenSerializer(tokens, many=True).data)
 
-    # -----------------------
-    # Call next token
-    # -----------------------
-    
-    @action(detail=False, methods=["post"], permission_classes=[IsStaffOrAdmin])
+    @action(detail=False, methods=["post"])
     def call_next(self, request):
-        # Remove all authentication/role checks here!
         qs = Token.objects.filter(status__in=["waiting", "called"]).order_by("queue_position")
-
-        # Finish current called token if exists
         current_token = qs.filter(status="called").first()
         if current_token:
             current_token.status = "completed"
             current_token.save()
-
-        # Get the next waiting token
         next_token = qs.filter(status="waiting").first()
         if not next_token:
             return Response({"detail": "No waiting tokens available"}, status=404)
-
         next_token.status = "called"
         next_token.save()
-
         return Response(TokenSerializer(next_token).data)
 
-    # -----------------------
-    # Complete token manually
-    # -----------------------
-    @action(detail=True, methods=["post"], permission_classes=[IsStaffOrAdmin])
+    @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         token = self.get_object()
         token.status = "completed"
         token.save()
-
-        # Automatically call next token
         next_token = self.get_queryset().filter(status="waiting").order_by("queue_position").first()
-        if next_token:
-            next_token.status = "called"
-            next_token.save()
-            next_token_data = TokenSerializer(next_token).data
-        else:
-            next_token_data = None
-
+        next_token_data = TokenSerializer(next_token).data if next_token else None
         return Response({
             "completed_token": TokenSerializer(token).data,
             "next_token": next_token_data
         })
 
-    # -----------------------
-    # Manual token entry
-    # -----------------------
-    @action(detail=False, methods=["post"], permission_classes=[IsStaffOrAdmin])
+    @action(detail=False, methods=["post"])
     def manual_call(self, request):
         token_id = request.data.get("token_id")
         category_id = request.data.get("category_id")
-
         if not token_id:
             return Response({"detail": "token_id is required"}, status=400)
-
         token, created = Token.objects.get_or_create(
             id=token_id,
             defaults={
@@ -143,60 +82,34 @@ class TokenViewSet(viewsets.ModelViewSet):
                 "issued_at": timezone.now(),
             }
         )
-
-        # If token exists and waiting, mark as called
         if not created and token.status == "waiting":
             token.status = "called"
             token.save()
-
         return Response(TokenSerializer(token).data)
 
-    # -----------------------
-    # Admin: Generate token + QR (now public)
-    # -----------------------
-   
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["post"])
     def admin_generate(self, request):
-        """
-        Public: Create a new token and its QR code.
-        Required POST field: category (id)
-        Optional: status, issued_at
-        """
-        from django.utils.crypto import get_random_string
-
         category_id = request.data.get("category")
         status = request.data.get("status", "waiting")
         issued_at = request.data.get("issued_at", timezone.now())
-
         if not category_id:
             return Response({"detail": "category is required"}, status=400)
-
-        # Generate a unique token_id (you can use any logic you want)
         token_id = get_random_string(8).upper()
-
-        # Get category name for QR data
         try:
             category_obj = Category.objects.get(id=category_id)
             category_name = category_obj.name
         except Category.DoesNotExist:
             return Response({"detail": "Invalid category"}, status=400)
-
-        # Auto-generate QR data (customize as needed)
         qr_data = f"{category_name}-{token_id}"
-
-        # Create Token
         token = Token.objects.create(
             category_id=category_id,
-           
             status=status,
             issued_at=issued_at,
         )
-
-        # Create QRCode for this token
         qr_serializer = QRCodeSerializer(data={
             "token": token.id,
-            "data": qr_data,
             "category": category_id,
+            "data": qr_data,
         })
         if qr_serializer.is_valid():
             qr = qr_serializer.save()
@@ -206,79 +119,51 @@ class TokenViewSet(viewsets.ModelViewSet):
                 "detail": "QR code creation failed",
                 "errors": qr_serializer.errors
             }, status=400)
-
         return Response({
             "token": TokenSerializer(token).data,
             "qr_code": QRCodeSerializer(qr).data,
         }, status=201)
 
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], url_path='public-create')
     def public_create(self, request):
-        """
-        Public endpoint: Create a new token and QR code with auto-generated values.
-        Required POST field: category (id)
-        """
         category_id = request.data.get("category")
-        status = "waiting"
-        issued_at = timezone.now()
-
         if not category_id:
-            return Response({"detail": "category is required"}, status=400)
-
-        # Generate a unique token_id
-        token_id = get_random_string(8).upper()
-
-        # Get category name for QR data
+            return Response({"error": "Category required"}, status=400)
         try:
-            category_obj = Category.objects.get(id=category_id)
-            category_name = category_obj.name
+            category = Category.objects.get(id=category_id)
         except Category.DoesNotExist:
-            return Response({"detail": "Invalid category"}, status=400)
-
-        # Auto-generate QR data (customize as needed)
-        qr_data = f"{category_name}-{token_id}"
-
-        # Create Token
-        token = Token.objects.create(
-            category_id=category_id,
-            token_id=token_id,
-            status=status,
-            issued_at=issued_at,
+            return Response({"error": "Invalid category"}, status=400)
+        token = Token.objects.create(category=category, status="waiting")
+        expires_at = timezone.now() + timedelta(hours=24)
+        # Check if QRCode already exists for this token
+        qr_code, created = QRCode.objects.get_or_create(
+            token=token,
+            defaults={
+                "category": category,
+                "expires_at": expires_at,
+            }
         )
-
-        # Create QRCode for this token
-        qr_serializer = QRCodeSerializer(data={
-            "token": token.id,
-            "data": qr_data,
-            "category": category_id,
-        })
-        if qr_serializer.is_valid():
-            qr = qr_serializer.save()
-        else:
-            token.delete()
-            return Response({
-                "detail": "QR code creation failed",
-                "errors": qr_serializer.errors
-            }, status=400)
-
+        qr_data = QRCodeSerializer(qr_code, context={"request": request}).data
         return Response({
-            "token": TokenSerializer(token).data,
-            "qr_code": QRCodeSerializer(qr).data,
+            "token": {
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": category.id,
+                    "name": category.name,
+                },
+            },
+            "qr_code": qr_data,
         }, status=201)
-
 
 # ----------------------------
-# QRCode ViewSet (with custom actions)
+# QRCode ViewSet
 # ----------------------------
 class QRCodeViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for QR codes, with generation, bulk, verification, templates, download, and share.
-    """
     queryset = QRCode.objects.all().order_by("-generated_at")
     serializer_class = QRCodeSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser]
-
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["token__token_id", "category", "checksum"]
     ordering_fields = ["generated_at", "expires_at"]
@@ -338,14 +223,10 @@ class QRCodeViewSet(viewsets.ModelViewSet):
         share_url = f"{domain}/qr/{qr.id}/"
         return Response({"share_url": share_url})
 
-
 # ----------------------------
 # QRScan ViewSet
 # ----------------------------
 class QRScanViewSet(viewsets.ModelViewSet):
-    """
-    Logs each scan and optionally validates QR expiry.
-    """
     queryset = QRScan.objects.all().order_by("-scan_time")
     serializer_class = QRScanSerializer
     permission_classes = [AllowAny]
@@ -354,13 +235,11 @@ class QRScanViewSet(viewsets.ModelViewSet):
         qr_id = request.data.get("qr")
         token_id = request.data.get("token_id")
         device_type = request.data.get("device_type", "Unknown")
-
         if token_id and not qr_id:
             try:
                 token = Token.objects.get(id=token_id)
             except Token.DoesNotExist:
                 return Response({"error": "Invalid token ID"}, status=400)
-
             scan = QRScan.objects.create(
                 qr=None,
                 scanned_by=request.user,
@@ -374,17 +253,14 @@ class QRScanViewSet(viewsets.ModelViewSet):
                 "scan": self.get_serializer(scan).data,
                 "token_status": token.status
             }, status=201)
-
         try:
             qr = QRCode.objects.get(id=qr_id)
         except QRCode.DoesNotExist:
             return Response({"error": "Invalid QR code"}, status=404)
-
         token = qr.token
         verification_status = "SUCCESS"
         if qr.expires_at and qr.expires_at < timezone.now():
             verification_status = "FAILED"
-
         scan = QRScan.objects.create(
             qr=qr,
             scanned_by=request.user,
@@ -394,40 +270,66 @@ class QRScanViewSet(viewsets.ModelViewSet):
             verification_status=verification_status,
             token=token,
         )
-
         return Response({
             "scan": self.get_serializer(scan).data,
             "token_status": token.status,
             "verification_status": verification_status
         }, status=status.HTTP_201_CREATED)
 
-
 # ----------------------------
 # QRSettings ViewSet
 # ----------------------------
 class QRSettingsViewSet(viewsets.ModelViewSet):
-    """
-    Manage system-wide QR settings.
-    """
     queryset = QRSettings.objects.all()
     serializer_class = QRSettingsSerializer
-    permission_classes = [IsAdminUser]
-
+    permission_classes = [AllowAny]
 
 # ----------------------------
-# Reports
+# AuditLog ViewSet
+# ----------------------------
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AuditLog.objects.all().order_by("-timestamp")
+    serializer_class = AuditLogSerializer
+    permission_classes = [AllowAny]
+
+# ----------------------------
+# Function-based views for reports and mobile tools
 # ----------------------------
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def dashboard_overview(request):
+    user = request.user
+    if hasattr(user, "role") and user.role == "admin":
+        active_tokens = Token.objects.filter(status="waiting").count()
+        called_tokens = Token.objects.filter(status="called").count()
+        completed_tokens = Token.objects.filter(status="completed").count()
+        scans_today = QRScan.objects.filter(scan_time__date=date.today()).count()
+    else:
+        categories = getattr(user, "categories", None)
+        if categories is not None:
+            active_tokens = Token.objects.filter(
+                status="waiting", category__in=categories.all()
+            ).count()
+            called_tokens = Token.objects.filter(
+                status="called", category__in=categories.all()
+            ).count()
+            completed_tokens = Token.objects.filter(
+                status="completed", category__in=categories.all()
+            ).count()
+        else:
+            active_tokens = called_tokens = completed_tokens = 0
+        scans_today = QRScan.objects.filter(
+            scanned_by=user, scan_time__date=date.today()
+        ).count()
     return Response({
-        "active_tokens": Token.objects.filter(status="waiting").count(),
-        "called_tokens": Token.objects.filter(status="called").count(),
-        "completed_tokens": Token.objects.filter(status="completed").count(),
-        "scans_today": QRScan.objects.filter(scan_time__date=date.today()).count(),
+        "active_tokens": active_tokens,
+        "called_tokens": called_tokens,
+        "completed_tokens": completed_tokens,
+        "scans_today": scans_today,
     })
 
-
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def operational_report(request):
     return Response({
         "tokens_today": Token.objects.filter(issued_at__date=date.today()).count(),
@@ -435,49 +337,31 @@ def operational_report(request):
         "scans_today": QRScan.objects.filter(scan_time__date=date.today()).count(),
     })
 
-
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def category_summary(request):
     data = (
         Token.objects.values("category__name", "status")
         .annotate(count=Count("id"))
         .order_by("category__name")
     )
-    return Response(list(data))  # convert QuerySet to list
-
-
+    return Response(list(data))
 
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([AllowAny])
 def my_user_summary(request):
-    """
-    Returns logged-in user details along with assigned category names.
-    """
     user = request.user
-
-    # Get category names assigned to the user
-    categories = user.categories.values_list("name", flat=True)  # Assuming ManyToManyField
+    categories = user.categories.values_list("name", flat=True)
     result = {
         "username": user.username,
         "full_name": user.get_full_name() or user.username,
         "email": user.email,
-        "categories": list(categories),  # List of category names
+        "categories": list(categories),
     }
-
     return Response(result)
 
-
-# ----------------------------
-# Security
-# ----------------------------
-class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = AuditLog.objects.all().order_by("-timestamp")
-    serializer_class = AuditLogSerializer
-    permission_classes = [IsAdminUser]
-
-
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([AllowAny])
 def session_info(request):
     return Response({
         "username": request.user.username,
@@ -486,76 +370,41 @@ def session_info(request):
         "session_expiry": request.session.get_expiry_date() if request.session else None,
     })
 
-
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([AllowAny])
 def scan_activity_report(request):
-    """
-    Scan logs:
-    - Staff: only their scans
-    - Admin: all scans
-    """
     user = request.user
-    if user.role == "admin":
+    if hasattr(user, "role") and user.role == "admin":
         scans = QRScan.objects.all().order_by("-scan_time")
     else:
         scans = QRScan.objects.filter(scanned_by=user).order_by("-scan_time")
-
     serializer = ScanActivityReportSerializer(scans, many=True)
     return Response(serializer.data)
 
-
-# ----------------------------
-# Verification Logs
-# ----------------------------
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([AllowAny])
 def verification_logs(request):
-    """
-    Verification logs:
-    - Staff: only scans done by themselves
-    - Admin: all scans
-    """
     user = request.user
-    if user.role == "admin":
+    if hasattr(user, "role") and user.role == "admin":
         scans = QRScan.objects.all().order_by("-scan_time")
     else:
         scans = QRScan.objects.filter(scanned_by=user).order_by("-scan_time")
-
     serializer = VerificationLogSerializer(scans, many=True)
     return Response(serializer.data)
 
-
-# ----------------------------
-# Staff Tasks Overview
-# ----------------------------
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([AllowAny])
 def staff_tasks_overview(request):
-    """
-    Returns a list of tasks (tokens & scans) associated with the logged-in staff.
-    - Admins: see all tasks
-    - Staff: see only their own tasks
-    """
     user = request.user
-
-    # -----------------------
-    # If Admin: show everything
-    # -----------------------
-    if user.role == "admin":
-        tokens = Token.objects.all().order_by("-issued_at")[:10]  # latest 10 tokens
-        scans = QRScan.objects.all().order_by("-scan_time")[:10]  # latest 10 scans
+    if hasattr(user, "role") and user.role == "admin":
+        tokens = Token.objects.all().order_by("-issued_at")[:10]
+        scans = QRScan.objects.all().order_by("-scan_time")[:10]
     else:
-        # Staff: only tokens in assigned categories & scans they did
         tokens = Token.objects.filter(category__in=user.categories.all()).order_by("-issued_at")[:10]
         scans = QRScan.objects.filter(scanned_by=user).order_by("-scan_time")[:10]
-
     token_data = TokenSerializer(tokens, many=True).data
     scan_data = ScanActivityReportSerializer(scans, many=True).data
-
-    # Build task-style output
     tasks = []
-
     for token in token_data:
         tasks.append({
             "type": "Token",
@@ -564,7 +413,6 @@ def staff_tasks_overview(request):
             "category": token.get("category", None),
             "issued_at": token["issued_at"],
         })
-
     for scan in scan_data:
         tasks.append({
             "type": "Scan",
@@ -573,12 +421,9 @@ def staff_tasks_overview(request):
             "device_type": scan["device_type"],
             "scan_time": scan["scan_time"],
         })
-
-    # Sort tasks by latest time
     tasks_sorted = sorted(tasks, key=lambda x: (
         x.get("issued_at") or x.get("scan_time")
     ), reverse=True)
-
     return Response({
         "username": user.username,
         "full_name": user.get_full_name() or user.username,
@@ -586,11 +431,8 @@ def staff_tasks_overview(request):
         "tasks": tasks_sorted
     })
 
-
-# ----------------------------
-# Mobile Tools
-# ----------------------------
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def quick_actions(request):
     return Response([
         {"label": "Scan Token", "action": "/api/scans/"},

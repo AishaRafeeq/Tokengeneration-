@@ -98,6 +98,7 @@ class QRCode(models.Model):
     image = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
     format = models.CharField(max_length=10, default='PNG')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    data = models.TextField(blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=(('VALID', 'VALID'), ('EXPIRED', 'EXPIRED'), ('INVALID', 'INVALID')),

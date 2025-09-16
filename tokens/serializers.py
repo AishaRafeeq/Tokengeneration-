@@ -2,56 +2,54 @@ from rest_framework import serializers
 from .models import Token, QRCode, QRScan, QRSettings, QRTemplate, AuditLog
 from .utils import generate_qr_code
 from django.utils import timezone
+from django.core.files.base import ContentFile
 
 
 # ----------------------------
 # Token Serializer
 # ----------------------------
+from .models import QRCode
+from .utils import generate_qr_code
+
 class TokenSerializer(serializers.ModelSerializer):
     qr_code = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source="category.name", read_only=True)
 
     class Meta:
         model = Token
-        fields = [
-            'id',
-            'token_id',
-            'category',
-            'status',
-            'issued_at',
-            'updated_at',
-            'queue_position',
-            'qr_code',
-        ]
-        read_only_fields = ['token_id', 'queue_position', 'issued_at', 'updated_at']
+        fields = ["id", "token_id", "category", "category_name", "status", "issued_at", "qr_code"]
 
     def get_qr_code(self, obj):
-        if hasattr(obj, "qr_code") and obj.qr_code and obj.qr_code.image:
-            return obj.qr_code.image.url
+        if hasattr(obj, 'qr_code'):
+            return {
+                "image": obj.qr_code.image.url if obj.qr_code.image else None,
+                "payload": obj.qr_code.payload,
+            }
         return None
 
     def create(self, validated_data):
-        # token_id and queue_position auto-generated in model
-        token = Token.objects.create(**validated_data)
-        return token
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        if instance.category:
-            representation['category_id'] = instance.category.id
-            representation['category_name'] = instance.category.name
-        else:
-            representation['category_id'] = None
-            representation['category_name'] = None
-        return representation
+        # Token.save() will auto-generate the QRCode
+        return Token.objects.create(**validated_data)
 
 
 # ----------------------------
 # QR Code Serializer
 # ----------------------------
+from rest_framework import serializers
+from .models import QRCode
+
 class QRCodeSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = QRCode
-        fields = '__all__'
+        fields = ["id", "image"]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.image.url)
+        return obj.image.url
 
 
 # ----------------------------
