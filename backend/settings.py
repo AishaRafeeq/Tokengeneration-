@@ -36,9 +36,10 @@ ALLOWED_HOSTS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # React frontend (default Vite port)
-    "http://localhost:5174", 
-     "http://localhost:3000" # React frontend (your case)
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "https://public-token-generate.netlify.app",  # <-- Add this line
 ]
 
 
