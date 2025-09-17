@@ -47,7 +47,7 @@ class Token(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Auto-generate QR code only if it doesn't exist
+
         if is_new and not hasattr(self, "qr_code"):
             try:
                 from .utils import generate_qr_code
@@ -66,31 +66,24 @@ class Token(models.Model):
                 )
             except Exception as e:
                 logging.exception("QR generation failed for token %s", self.token_id)
-                # Optionally: continue without QR or raise a custom exception
+               
 
     def __str__(self):
         return f"{self.token_id} ({self.category}) - {self.status}"
 
 
 class QRSettings(models.Model):
-    ERROR_CORRECTION_CHOICES = [
-        ('L', 'L (7%)'),
-        ('M', 'M (15%)'),
-        ('Q', 'Q (25%)'),
-        ('H', 'H (30%)')
-    ]
-    base_url = models.URLField(default='http://localhost:3000/token-status/')
-    default_size = models.IntegerField(default=10)
-    default_border = models.IntegerField(default=4)
-    error_correction = models.CharField(
-        max_length=1, choices=ERROR_CORRECTION_CHOICES, default='M'
-    )
-    default_expiry_hours = models.IntegerField(default=24)
-    default_format = models.CharField(max_length=10, default='PNG')
-    updated_at = models.DateTimeField(auto_now=True)
+    size = models.IntegerField(default=256)
+    border = models.IntegerField(default=4)
+    error_correction = models.CharField(max_length=2, default="M")
+    expiry_hours = models.IntegerField(default=24)
+    generation_start_time = models.TimeField(default="09:00")
+    generation_end_time = models.TimeField(default="18:00")
+    daily_reset = models.BooleanField(default=True)
+   
 
     def __str__(self):
-        return f"QR Settings (updated {self.updated_at.isoformat()})"
+        return f"QR Settings (size={self.size}, border={self.border}, error_correction={self.error_correction}, expiry_hours={self.expiry_hours})"
 
 
 class QRCode(models.Model):
@@ -112,7 +105,7 @@ class QRCode(models.Model):
 
 
 class QRScan(models.Model):
-    qr = models.ForeignKey(QRCode, on_delete=models.CASCADE, related_name='scans')
+    qr = models.ForeignKey(QRCode, on_delete=models.SET_NULL, null=True, blank=True, related_name="scans")
     scanned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )
@@ -134,7 +127,7 @@ class QRScan(models.Model):
 class QRTemplate(models.Model):
     name = models.CharField(max_length=100)
     color = models.CharField(max_length=7, default="#000000")
-    # Extend with more styling options (logo, background, etc.)
+    
 
     def __str__(self):
         return self.name

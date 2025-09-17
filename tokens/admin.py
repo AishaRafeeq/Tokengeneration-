@@ -100,4 +100,4 @@ class QRScanAdmin(admin.ModelAdmin):
 
 @admin.register(QRSettings)
 class QRSettingsAdmin(admin.ModelAdmin):
-    list_display = ['base_url', 'default_size', 'error_correction', 'default_expiry_hours', 'updated_at']
+    list_display = ('size', 'border', 'error_correction', 'expiry_hours')  # Only use actual model fields

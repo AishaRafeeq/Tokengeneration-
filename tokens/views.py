@@ -27,9 +27,16 @@ from .serializers import (
 from users.models import Category
 from .utils import generate_colored_qr_code
 
-# ----------------------------
-# Token ViewSet
-# ----------------------------
+
+def is_within_generation_time():
+    settings = QRSettings.objects.first()
+    if not settings:
+        return True  # fallback: allow if not configured
+    now = timezone.localtime().time()
+    start = settings.generation_start_time
+    end = settings.generation_end_time
+    return start <= now <= end
+
 class TokenViewSet(viewsets.ModelViewSet):
     queryset = Token.objects.all().order_by("queue_position")
     serializer_class = TokenSerializer
@@ -40,7 +47,18 @@ class TokenViewSet(viewsets.ModelViewSet):
     lookup_field = 'token_id'
 
     def get_queryset(self):
-        return super().get_queryset().filter(status__in=["waiting", "called"]).order_by("queue_position")
+        user = self.request.user
+        qs = super().get_queryset().filter(status__in=["waiting", "called"]).order_by("queue_position")
+      
+        qs = qs.exclude(source="manual")
+       
+        if hasattr(user, "role") and user.role == "staff":
+            staff_categories = getattr(user, "categories", None)
+            if staff_categories is not None:
+                qs = qs.filter(category__in=staff_categories.all())
+            else:
+                qs = qs.none()
+        return qs
 
     @action(detail=False, methods=["get"])
     def active(self, request):
@@ -51,12 +69,15 @@ class TokenViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def call_next(self, request):
-        qs = Token.objects.filter(status__in=["waiting", "called"]).order_by("queue_position")
+        user = request.user
+        qs = self.get_queryset()
+        # Complete the current "called" token, if any
         current_token = qs.filter(status="called").first()
         if current_token:
             current_token.status = "completed"
             current_token.save()
-        next_token = qs.filter(status="waiting").first()
+        # Call only the next "waiting" token
+        next_token = qs.filter(status="waiting").order_by("queue_position").first()
         if not next_token:
             return Response({"detail": "No waiting tokens available"}, status=404)
         next_token.status = "called"
@@ -64,77 +85,150 @@ class TokenViewSet(viewsets.ModelViewSet):
         return Response(TokenSerializer(next_token).data)
 
     @action(detail=True, methods=["post"])
-    def complete(self, request, pk=None):
-        token = self.get_object()
+    def complete(self, request, token_id=None):
+        try:
+            token = self.get_object()
+        except Token.DoesNotExist:
+            return Response({"error": "Token not found"}, status=404)
         token.status = "completed"
         token.save()
+    # Automatically call the next waiting token (if any)
         next_token = self.get_queryset().filter(status="waiting").order_by("queue_position").first()
-        next_token_data = TokenSerializer(next_token).data if next_token else None
-        return Response({
-            "completed_token": TokenSerializer(token).data,
-            "next_token": next_token_data
-        })
+        if next_token:
+            next_token.status = "called"
+            next_token.save()
+            return Response({
+                "success": True,
+                "completed_token_id": token.token_id,
+                "next_token_id": next_token.token_id,
+                "next_status": next_token.status,
+            })
+        else:
+            return Response({
+                "success": True,
+                "completed_token_id": token.token_id,
+                "next_token_id": None,
+                "next_status": None,
+            })
 
     @action(detail=False, methods=["post"])
     def manual_call(self, request):
+        user = request.user
         token_id = request.data.get("token_id")
-        category_id = request.data.get("category_id")
         if not token_id:
             return Response({"detail": "token_id is required"}, status=400)
-        token, created = Token.objects.get_or_create(
-            id=token_id,
-            defaults={
-                "category_id": category_id,
-                "status": "called",
-                "issued_at": timezone.now(),
-            }
-        )
-        if not created and token.status == "waiting":
+
+        # Only allow staff to call for their assigned category
+        if hasattr(user, "role") and user.role == "staff":
+            staff_categories = getattr(user, "categories", None)
+            if not staff_categories or staff_categories.count() == 0:
+                return Response({"detail": "You are not assigned to any category."}, status=403)
+            if staff_categories.count() > 1:
+                return Response({"detail": "You are assigned to multiple categories. Please contact admin."}, status=400)
+            category = staff_categories.first()
+            category_id = category.id
+        elif hasattr(user, "role") and user.role == "admin":
+            category_id = request.data.get("category_id")
+            if not category_id:
+                return Response({"detail": "category_id is required for admin"}, status=400)
+            try:
+                category = Category.objects.get(id=category_id)
+            except Category.DoesNotExist:
+                return Response({"detail": "Invalid category"}, status=400)
+        else:
+            return Response({"detail": "Unauthorized"}, status=403)
+
+        # For manual tokens (token_id starts with "MAN"), avoid duplicate calling and do NOT generate QR
+        if token_id.startswith("MAN"):
+            existing_token = Token.objects.filter(token_id=token_id, category_id=category_id, source="manual").exclude(status="completed").first()
+            if existing_token:
+                return Response({"detail": "This manual token is already active or called."}, status=400)
+            # Find the current max queue_position for this category
+            max_position = Token.objects.filter(category_id=category_id).aggregate(Max('queue_position'))['queue_position__max'] or 0
+            # Create manual token at the end of the queue
+            token = Token.objects.create(
+                token_id=token_id,
+                category_id=category_id,
+                status="called",
+                issued_at=timezone.now(),
+                source="manual",
+                queue_position=max_position + 1
+            )
+            return Response({
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": token.category.id,
+                    "name": token.category.name,
+                },
+                "queue_position": token.queue_position,
+                "source": token.source,
+            })
+        else:
+            # For non-manual tokens, only call if in waiting status
+            token = Token.objects.filter(token_id=token_id, category_id=category_id).first()
+            if not token:
+                return Response({"detail": "Token not found."}, status=404)
+            if token.status != "waiting":
+                return Response({"detail": "Token is not in waiting status."}, status=400)
             token.status = "called"
             token.save()
-        return Response(TokenSerializer(token).data)
+            return Response(TokenSerializer(token).data)
 
     @action(detail=False, methods=["post"])
     def admin_generate(self, request):
+        if not is_within_generation_time():
+            return Response({"error": "Token generation is only allowed between configured hours."}, status=403)
         category_id = request.data.get("category")
         status = request.data.get("status", "waiting")
         issued_at = request.data.get("issued_at", timezone.now())
         if not category_id:
             return Response({"detail": "category is required"}, status=400)
-        token_id = get_random_string(8).upper()
         try:
-            category_obj = Category.objects.get(id=category_id)
-            category_name = category_obj.name
+            category = Category.objects.get(id=category_id)
         except Category.DoesNotExist:
             return Response({"detail": "Invalid category"}, status=400)
-        qr_data = f"{category_name}-{token_id}"
         max_position = Token.objects.filter(category_id=category_id).aggregate(Max('queue_position'))['queue_position__max'] or 0
         token = Token.objects.create(
-        category_id=category_id,
-        status=status,
-        issued_at=issued_at,
-        created_by=request.user if request.user.is_authenticated else None,
-        source="admin",
-        queue_position=max_position + 1,
-        
-)
-
-        qr_buffer = generate_colored_qr_code(qr_data, category_obj.color if hasattr(category_obj, "color") else "#007BFF")
+            category=category,
+            status=status,
+            issued_at=issued_at,
+            created_by=request.user if request.user.is_authenticated else None,
+            source="admin",
+            queue_position=max_position + 1,
+        )
+        expires_at = timezone.now() + timedelta(hours=24)
+        qr_data = token.token_id  
+        color = category.color if hasattr(category, "color") else "#007BFF"
+        qr_buffer = generate_colored_qr_code(qr_data, color)
         file_name = f"qr_{token.token_id}.png"
         qr_code = QRCode.objects.create(
             token=token,
-            category=category_obj,
+            category=category,
+            expires_at=expires_at,
             data=qr_data,
         )
         qr_code.image.save(file_name, ContentFile(qr_buffer.getvalue()), save=True)
-        token_data = TokenSerializer(token, context={"request": request}).data
         return Response({
-            "token": TokenSerializer(token).data,
-            "qr_code": QRCodeSerializer(qr_code, context={"request": request}).data,
+            "token": {
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": category.id,
+                    "name": category.name,
+                },
+                "queue_position": token.queue_position,
+            },
+            "qr_code": {
+                "image": request.build_absolute_uri(qr_code.image.url) if qr_code.image else None,
+                "data": qr_code.data,
+            },
         }, status=201)
 
     @action(detail=False, methods=['post'], url_path='public-create')
     def public_create(self, request):
+        if not is_within_generation_time():
+            return Response({"error": "Token generation is only allowed between configured hours."}, status=403)
         category_id = request.data.get("category")
         if not category_id:
             return Response({"error": "Category required"}, status=400)
@@ -195,13 +289,225 @@ class TokenViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def admin_tokens(self, request):
-        tokens = self.get_queryset().filter(source="admin").order_by("-issued_at")
+        tokens = self.get_queryset().filter(source="admin").exclude(status="completed").order_by("-issued_at")
         serializer = self.get_serializer(tokens, many=True)
         return Response(serializer.data)
 
-# ----------------------------
-# QRCode ViewSet
-# ----------------------------
+    @action(detail=False, methods=["post"], url_path="admin-bulk-generate")
+    def admin_bulk_generate(self, request):
+        category_id = request.data.get("category")
+        count = int(request.data.get("count", 1))
+        status_val = request.data.get("status", "waiting")
+        if not category_id or count < 1:
+            return Response({"detail": "category and count required"}, status=400)
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            return Response({"detail": "Invalid category"}, status=400)
+        created_tokens = []
+        max_position = Token.objects.filter(category_id=category_id).aggregate(Max('queue_position'))['queue_position__max'] or 0
+        for i in range(count):
+            token = Token.objects.create(
+                category=category,
+                status=status_val,
+                issued_at=timezone.now(),
+                created_by=request.user if request.user.is_authenticated else None,
+                source="admin",
+                queue_position=max_position + i + 1,
+            )
+            expires_at = timezone.now() + timedelta(hours=24)
+            qr_data = token.token_id
+            color = category.color if hasattr(category, "color") else "#007BFF"
+            qr_buffer = generate_colored_qr_code(qr_data, color)
+            file_name = f"qr_{token.token_id}.png"
+            qr_code = QRCode.objects.create(
+                token=token,
+                category=category,
+                expires_at=expires_at,
+                data=qr_data,
+            )
+            qr_code.image.save(file_name, ContentFile(qr_buffer.getvalue()), save=True)
+            created_tokens.append({
+                "token_id": token.token_id,
+                "status": token.status,
+                "category": {
+                    "id": category.id,
+                    "name": category.name,
+                },
+                "queue_position": token.queue_position,
+                "qr_image": request.build_absolute_uri(qr_code.image.url) if qr_code.image else None,
+            })
+        return Response({"created": created_tokens, "count": len(created_tokens)}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"])
+    def live_queue(self, request):
+        # Fetch all tokens with status "waiting"
+        tokens = Token.objects.filter(status="waiting").order_by("queue_position")
+        # Group tokens by category
+        categories = {}
+        for token in tokens:
+            cat_id = token.category.id
+            if cat_id not in categories:
+                categories[cat_id] = {
+                    "category": {
+                        "id": token.category.id,
+                        "name": token.category.name,
+                    },
+                    "tokens": [],
+                }
+            qr_code = QRCode.objects.filter(token=token).order_by('-id').first()
+            categories[cat_id]["tokens"].append({
+                "token_id": token.token_id,
+                "status": token.status,
+                "queue_position": token.queue_position,
+                "issued_at": token.issued_at,
+                "qr_image": request.build_absolute_uri(qr_code.image.url) if qr_code and qr_code.image else None,
+            })
+        return Response({"live_queue": list(categories.values())})
+
+    @action(detail=False, methods=["post"], url_path="verify-qr")
+    def verify_qr(self, request, *args, **kwargs):
+        token_id = request.data.get("token_id")
+        qr_code_id = request.data.get("qr_code_id")
+        user = request.user
+
+        if token_id:
+            try:
+                token = Token.objects.get(token_id=token_id)
+            except Token.DoesNotExist:
+                return Response({"verified": False, "detail": "Token not found."}, status=404)
+            qr_code = QRCode.objects.filter(token=token).order_by('-id').first()
+            verified = token.status in ["waiting", "called"]
+            verification_status = "SUCCESS" if verified else "FAILED"
+            return Response({
+                "token_id": token.token_id,
+                "verified": verified,
+                "verification_status": verification_status,
+                "qr_image": request.build_absolute_uri(qr_code.image.url) if qr_code and qr_code.image else None,
+                "status": token.status,
+                "category": {
+                    "id": token.category.id,
+                    "name": token.category.name,
+                }
+            })
+        elif qr_code_id:
+            try:
+                qr = QRCode.objects.get(id=qr_code_id)
+            except QRCode.DoesNotExist:
+                return Response({"verified": False, "detail": "QR code not found."}, status=404)
+            token = qr.token
+            verified = token.status in ["waiting", "called"]
+            verification_status = "SUCCESS" if verified else "FAILED"
+            return Response({
+                "token_id": token.token_id,
+                "verified": verified,
+                "verification_status": verification_status,
+                "qr_image": request.build_absolute_uri(qr.image.url) if qr.image else None,
+                "status": token.status,
+                "category": {
+                    "id": token.category.id,
+                    "name": token.category.name,
+                }
+            })
+        else:
+            return Response({"verified": False, "detail": "token_id or qr_code_id required."}, status=400)
+
+    @action(detail=False, methods=["get", "post"], url_path="qr-settings")
+    def qr_settings(self, request):
+        from .models import QRSettings
+        if request.method == "GET":
+            settings = QRSettings.objects.first()
+            if not settings:
+                return Response({"error": "No settings found"}, status=404)
+            return Response({
+                "size": settings.size,
+                "border": settings.border,
+                "error_correction": settings.error_correction,
+                "expiry_hours": settings.expiry_hours,
+                "generation_start_time": settings.generation_start_time,
+                "generation_end_time": settings.generation_end_time,
+                "daily_reset": settings.daily_reset,
+            })
+        elif request.method == "POST":
+            data = request.data
+            settings, _ = QRSettings.objects.get_or_create(pk=1)
+            settings.size = int(data.get("size", settings.size))
+            settings.border = int(data.get("border", settings.border))
+            settings.error_correction = data.get("error_correction", settings.error_correction)
+            settings.expiry_hours = int(data.get("expiry_hours", settings.expiry_hours))
+            if "generation_start_time" in data:
+                settings.generation_start_time = data["generation_start_time"]
+            if "generation_end_time" in data:
+                settings.generation_end_time = data["generation_end_time"]
+            if "daily_reset" in data:
+                settings.daily_reset = data["daily_reset"]
+            settings.save()
+            return Response({"success": True, "settings": {
+                "size": settings.size,
+                "border": settings.border,
+                "error_correction": settings.error_correction,
+                "expiry_hours": settings.expiry_hours,
+                "generation_start_time": settings.generation_start_time,
+                "generation_end_time": settings.generation_end_time,
+                "daily_reset": settings.daily_reset,
+            }})
+
+    @action(detail=False, methods=["get"], url_path="staff-queue")
+    def staff_queue(self, request):
+        user = request.user
+        if hasattr(user, "role") and user.role == "staff":
+            staff_categories = getattr(user, "categories", None)
+            if staff_categories:
+                tokens = Token.objects.filter(category__in=staff_categories.all(), status="waiting").order_by("queue_position")
+            else:
+                tokens = Token.objects.none()
+        else:
+            tokens = Token.objects.none()
+        # Group tokens by category
+        categories = {}
+        for token in tokens:
+            cat_id = token.category.id
+            if cat_id not in categories:
+                categories[cat_id] = {
+                    "category": {
+                        "id": token.category.id,
+                        "name": token.category.name,
+                    },
+                    "tokens": [],
+                }
+            categories[cat_id]["tokens"].append({
+                "token_id": token.token_id,
+                "status": token.status,
+                "queue_position": token.queue_position,
+                "issued_at": token.issued_at,
+            })
+        return Response({"staff_queue": list(categories.values())})
+
+    @action(detail=False, methods=["post"])
+    def staff_call_next(self, request):
+        user = request.user
+        if hasattr(user, "role") and user.role == "staff":
+            staff_categories = getattr(user, "categories", None)
+            if staff_categories:
+                # Complete any currently called token for this staff's categories
+                current_token = Token.objects.filter(
+                    category__in=staff_categories.all(), status="called"
+                ).first()
+                if current_token:
+                    current_token.status = "completed"
+                    current_token.save()
+                # Call only the next waiting token
+                next_token = Token.objects.filter(
+                    category__in=staff_categories.all(), status="waiting"
+                ).order_by("queue_position").first()
+                if not next_token:
+                    return Response({"error": "No waiting tokens"}, status=404)
+                next_token.status = "called"
+                next_token.save()
+                return Response({"success": True, "token_id": next_token.token_id, "status": next_token.status})
+        return Response({"error": "Unauthorized"}, status=403)
+
+
 class QRCodeViewSet(viewsets.ModelViewSet):
     queryset = QRCode.objects.all().order_by("-generated_at")
     serializer_class = QRCodeSerializer
@@ -284,9 +590,7 @@ class QRCodeViewSet(viewsets.ModelViewSet):
         share_url = f"{domain}/qr/{qr.id}/"
         return Response({"share_url": share_url})
 
-# ----------------------------
-# QRScan ViewSet
-# ----------------------------
+
 class QRScanViewSet(viewsets.ModelViewSet):
     queryset = QRScan.objects.all().order_by("-scan_time")
     serializer_class = QRScanSerializer
@@ -310,6 +614,10 @@ class QRScanViewSet(viewsets.ModelViewSet):
                 verification_status="MANUAL",
                 token=token,
             )
+            # Mark token and QR as completed
+            token.status = "completed"
+            token.save()
+            QRCode.objects.filter(token=token).update(status="completed")
             return Response({
                 "scan": self.get_serializer(scan).data,
                 "token_status": token.status
@@ -337,25 +645,29 @@ class QRScanViewSet(viewsets.ModelViewSet):
             "verification_status": verification_status
         }, status=status.HTTP_201_CREATED)
 
-# ----------------------------
-# QRSettings ViewSet
-# ----------------------------
+    @action(detail=False, methods=["get"], url_path="scanner-status")
+    def scanner_status(self, request):
+        user = request.user
+        if hasattr(user, "role") and user.role == "admin":
+            scans = QRScan.objects.all().order_by("-scan_time")
+        else:
+            scans = QRScan.objects.filter(scanned_by=user).order_by("-scan_time")
+        serializer = QRScanSerializer(scans, many=True)
+        return Response(serializer.data)
+
+
 class QRSettingsViewSet(viewsets.ModelViewSet):
     queryset = QRSettings.objects.all()
     serializer_class = QRSettingsSerializer
     permission_classes = [AllowAny]
 
-# ----------------------------
-# AuditLog ViewSet
-# ----------------------------
+
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.all().order_by("-timestamp")
     serializer_class = AuditLogSerializer
     permission_classes = [AllowAny]
 
-# ----------------------------
-# Function-based views for reports and mobile tools
-# ----------------------------
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def dashboard_overview(request):
@@ -365,6 +677,19 @@ def dashboard_overview(request):
         called_tokens = Token.objects.filter(status="called").count()
         completed_tokens = Token.objects.filter(status="completed").count()
         scans_today = QRScan.objects.filter(scan_time__date=date.today()).count()
+        
+        total_verifications = QRScan.objects.count()
+        success_verifications = QRScan.objects.filter(verification_status="SUCCESS").count()
+        failed_verifications = QRScan.objects.filter(verification_status="FAILED").count()
+        return Response({
+            "active_tokens": active_tokens,
+            "called_tokens": called_tokens,
+            "completed_tokens": completed_tokens,
+            "scans_today": scans_today,
+            "total_verifications": total_verifications,
+            "success_verifications": success_verifications,
+            "failed_verifications": failed_verifications,
+        })
     else:
         categories = getattr(user, "categories", None)
         if categories is not None:
@@ -382,12 +707,12 @@ def dashboard_overview(request):
         scans_today = QRScan.objects.filter(
             scanned_by=user, scan_time__date=date.today()
         ).count()
-    return Response({
-        "active_tokens": active_tokens,
-        "called_tokens": called_tokens,
-        "completed_tokens": completed_tokens,
-        "scans_today": scans_today,
-    })
+        return Response({
+            "active_tokens": active_tokens,
+            "called_tokens": called_tokens,
+            "completed_tokens": completed_tokens,
+            "scans_today": scans_today,
+        })
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -450,8 +775,14 @@ def verification_logs(request):
         scans = QRScan.objects.all().order_by("-scan_time")
     else:
         scans = QRScan.objects.filter(scanned_by=user).order_by("-scan_time")
+    total = scans.count()
+    failed = scans.filter(verification_status="FAILED").count()
     serializer = VerificationLogSerializer(scans, many=True)
-    return Response(serializer.data)
+    return Response({
+        "total_verifications": total,
+        "failed_verifications": failed,
+        "logs": serializer.data
+    })
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -500,5 +831,102 @@ def quick_actions(request):
         {"label": "Active Queue", "action": "/api/tokens/"},
         {"label": "Completed", "action": "/api/tokens/completed/"},
     ])
+
+@api_view(['GET', 'POST', 'PATCH'])
+@permission_classes([AllowAny])
+def category_management(request):
+    user = request.user
+    # Admins see all categories, others see only their assigned categories
+    if request.method == "GET":
+        if hasattr(user, "role") and user.role == "admin":
+            categories = Category.objects.all()
+        elif hasattr(user, "categories"):
+            categories = user.categories.all()
+        else:
+            categories = Category.objects.none()
+        return Response([{"id": c.id, "name": c.name, "color": c.color} for c in categories])
+
+    elif request.method == "POST":
+        # Only allow admins to add new categories
+        if not (hasattr(user, "role") and user.role == "admin"):
+            return Response({"error": "Only admins can add categories."}, status=403)
+        name = request.data.get("name")
+        color = request.data.get("color", "#2563EB")
+        if not name:
+            return Response({"error": "Name required"}, status=400)
+        category = Category.objects.create(name=name, color=color)
+        return Response({"id": category.id, "name": category.name, "color": category.color})
+
+    elif request.method == "PATCH":
+        # Only allow admins to edit categories
+        if not (hasattr(user, "role") and user.role == "admin"):
+            return Response({"error": "Only admins can edit categories."}, status=403)
+        cat_id = request.data.get("id")
+        color = request.data.get("color")
+        name = request.data.get("name")
+        try:
+            category = Category.objects.get(id=cat_id)
+        except Category.DoesNotExist:
+            return Response({"error": "Category not found"}, status=404)
+        if color:
+            category.color = color
+        if name:
+            category.name = name
+        category.save()
+        return Response({"id": category.id, "name": category.name, "color": category.color})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def scan_count(request):
+    user = request.user
+    if hasattr(user, "role") and user.role == "admin":
+        total = QRScan.objects.count()
+        # Per-staff breakdown
+        staff_counts = (
+            QRScan.objects.values("scanned_by__username", "scanned_by__first_name", "scanned_by__last_name")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        return Response({
+            "total_scans": total,
+            "staff_counts": [
+                {
+                    "username": s["scanned_by__username"],
+                    "full_name": f"{s['scanned_by__first_name']} {s['scanned_by__last_name']}".strip(),
+                    "count": s["count"]
+                }
+                for s in staff_counts if s["scanned_by__username"]
+            ]
+        })
+    else:
+        count = QRScan.objects.filter(scanned_by=user).count()
+        return Response({"my_scan_count": count})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def staff_activity(request):
+    user = request.user
+    from .models import QRScan
+
+    # Admin can filter by username
+    username = request.GET.get("username")
+    if hasattr(user, "role") and user.role == "admin" and username:
+        scans = QRScan.objects.filter(scanned_by__username=username).select_related("scanned_by", "token__category").order_by("-scan_time")
+    elif hasattr(user, "role") and user.role == "admin":
+        scans = QRScan.objects.select_related("scanned_by", "token__category").order_by("-scan_time")
+    else:
+        scans = QRScan.objects.filter(scanned_by=user).select_related("token__category").order_by("-scan_time")
+    activity = []
+    for scan in scans:
+        activity.append({
+            "scan_id": scan.id,
+            "staff_username": scan.scanned_by.username if scan.scanned_by else None,
+            "staff_name": scan.scanned_by.get_full_name() if scan.scanned_by else None,
+            "category": scan.token.category.name if scan.token and scan.token.category else None,
+            "token_id": scan.token.token_id if scan.token else None,
+            "verification_status": scan.verification_status,
+            "scan_time": scan.scan_time,
+        })
+    return Response(activity)
 
 

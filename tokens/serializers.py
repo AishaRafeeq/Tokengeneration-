@@ -22,21 +22,16 @@ class TokenSerializer(serializers.ModelSerializer):
         fields = ["id", "token_id", "category", "category_name", "status", "issued_at", "qr_code"]
 
     def get_qr_code(self, obj):
-        qr = obj.qrcodes.order_by('-id').first()  # Get latest QRCode
-        if qr:
-          request = self.context.get("request", None)  # get request safely
-        if qr.image:
-            image_url = request.build_absolute_uri(qr.image.url) if request else qr.image.url
-        else:
-            image_url = None
-        return {
-            "image": image_url,
-            "payload": qr.payload,
-            "expires_at": qr.expires_at,
-        }
+        if getattr(obj, "source", None) == "manual" or str(obj.token_id).startswith("MAN"):
+            return None
+        qr = QRCode.objects.filter(token=obj).order_by('-id').first()
+        if qr and qr.image:
+            request = self.context.get("request")
+            url = qr.image.url
+            if request is not None:
+                url = request.build_absolute_uri(url)
+            return url
         return None
-
-
 
     def create(self, validated_data):
         # Token.save() will auto-generate the QRCode
@@ -171,43 +166,11 @@ class ScanActivityReportSerializer(serializers.ModelSerializer):
 # Verification Log Serializer
 # ----------------------------
 class VerificationLogSerializer(serializers.ModelSerializer):
-    token_id = serializers.SerializerMethodField()
-    token_category = serializers.SerializerMethodField()
-    verifier_name = serializers.SerializerMethodField()
-    verification_result = serializers.SerializerMethodField()
+    staff_username = serializers.CharField(source="scanned_by.username", read_only=True)
+    staff_name = serializers.CharField(source="scanned_by.get_full_name", read_only=True)
+    category = serializers.CharField(source="token.category.name", read_only=True)
+    token_id = serializers.CharField(source="token.token_id", read_only=True)
 
     class Meta:
         model = QRScan
-        fields = [
-            "token_id",
-            "token_category",
-            "scan_time",
-            "verifier_name",
-            "ip_address",
-            "device_type",
-            "verification_result",
-        ]
-
-    def get_token_id(self, obj):
-        return obj.qr.token.token_id if obj.qr else "INVALID"
-
-    def get_token_category(self, obj):
-        return obj.qr.token.category.name if obj.qr and obj.qr.token.category else None
-
-    def get_verifier_name(self, obj):
-        if obj.scanned_by:
-            return obj.scanned_by.get_full_name() or obj.scanned_by.username
-        return "Unknown"
-
-    def get_verification_result(self, obj):
-        if obj.verification_status == "MANUAL":
-            return "MANUAL ENTRY"
-        if not obj.qr:
-            return "INVALID"
-        now = timezone.now()
-        if obj.qr.expires_at < now:
-            return "EXPIRED"
-        elif obj.verification_status == "SUCCESS":
-            return "VALID"
-        else:
-            return "FAILED"
+        fields = ["id", "staff_username", "staff_name", "category", "token_id", "verification_status", "scan_time"]

@@ -31,9 +31,9 @@ class UserSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "role",
-            "categories",      # nested read-only
+            "categories",     
             "category_ids",   
-             "full_name", # write-only
+             "full_name", 
             "can_scan_qr",
             "can_generate_qr",
             "can_view_analytics",

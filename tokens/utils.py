@@ -8,7 +8,7 @@ from datetime import timedelta
 from PIL import Image
 
 def generate_qr_code(token_obj, qr_settings=None):
-    # Sensible defaults
+    
     default_format = getattr(qr_settings, 'default_format', 'PNG')
     default_size = getattr(qr_settings, 'default_size', 10)
     error_correction = getattr(qr_settings, 'error_correction', 'M')
@@ -58,7 +58,7 @@ def generate_qr_code(token_obj, qr_settings=None):
     content = ContentFile(buffer.read())
     saved_path = default_storage.save(filename, content)
 
-    return qr_data, checksum, saved_path  # saved_path is 'qrcodes/qrcode_A001.png'
+    return qr_data, checksum, saved_path  
 
 def generate_colored_qr_code(data, color="#007BFF"):
     qr_img = qrcode.make(data)
