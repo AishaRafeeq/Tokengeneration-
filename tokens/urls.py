@@ -19,7 +19,9 @@ from .views import (
     staff_tasks_overview,
     category_management,
     scan_count,
-    staff_activity
+    staff_activity,
+    daily_scan_report,
+    queue_emergency
 )
 
 # Create a router and register our viewsets with it
@@ -29,6 +31,7 @@ router.register(r'qr', QRCodeViewSet, basename='qr')
 router.register(r'scans', QRScanViewSet, basename='qrscans')
 router.register(r'settings', QRSettingsViewSet, basename='qrsettings')
 router.register(r'audit', AuditLogViewSet, basename='auditlogs')
+
 
 token_list = TokenViewSet.as_view({'get': 'live_queue'})
 token_scanner_status = TokenViewSet.as_view({'get': 'scanner_status'})
@@ -65,4 +68,6 @@ urlpatterns += [
     path('tokens/staff-queue/', TokenViewSet.as_view({'get': 'staff_queue'}), name='staff-queue'),
     path('scan-count/', scan_count, name='scan-count'),
     path('staff-activity/', staff_activity, name='staff-activity'),
+    path('tokens/daily-scan-report/', daily_scan_report, name='daily-scan-report'),
+    path('queue/emergency/', queue_emergency, name='queue-emergency'),
 ]

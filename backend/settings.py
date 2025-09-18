@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'import_export',
 
     'rest_framework',
 'qr_code',
@@ -137,7 +138,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.parse(
-        'postgresql://postgres:psPenLAYIZIeHOIQiVCKtWQEEfzqBhqu@nozomi.proxy.rlwy.net:54353/railway',
+        'postgresql://token_generation_user:ieG46Xx3oAebVHrIpC2zF7abgRh8Y9Iy@dpg-d30o4395pdvs7388oh90-a.oregon-postgres.render.com/token_generation',
         conn_max_age=600,
         ssl_require=True
     )

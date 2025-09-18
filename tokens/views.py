@@ -929,4 +929,63 @@ def staff_activity(request):
         })
     return Response(activity)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def daily_scan_report(request):
+    user = request.user
+    # Only allow admin
+    if not (hasattr(user, "role") and user.role == "admin"):
+        return Response({"error": "Only admins can access this."}, status=403)
+    today = date.today()
+    scans = QRScan.objects.filter(scan_time__date=today).select_related("token", "scanned_by", "token__category")
+    data = []
+    for scan in scans:
+        data.append({
+            "scan_id": scan.id,
+            "token_id": scan.token.token_id if scan.token else None,
+            "category": scan.token.category.name if scan.token and scan.token.category else None,
+            "scanned_by": scan.scanned_by.username if scan.scanned_by else None,
+            "verification_status": scan.verification_status,
+            "scan_time": scan.scan_time,
+            "device_type": scan.device_type,
+            "ip_address": scan.ip_address,
+        })
+    return Response(data)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def queue_emergency(request):
+    """
+    Emergency queue control: pause, resume, or clear tokens for a category or all.
+    POST data: { "action": "pause"|"resume"|"clear", "category_id": optional }
+    """
+    action = request.data.get("action")
+    category_id = request.data.get("category_id")
+    if action not in ["pause", "resume", "clear"]:
+        return Response({"error": "Invalid action"}, status=400)
+
+    tokens_qs = Token.objects.all()
+    if category_id:
+        tokens_qs = tokens_qs.filter(category_id=category_id)
+
+    if action == "pause":
+        tokens_qs.filter(status__in=["waiting", "called"]).update(status="waiting")
+        return Response({"status": "paused", "affected": tokens_qs.count()})
+    elif action == "resume":
+        # Set first waiting token per category to "called", rest remain "waiting"
+        categories = tokens_qs.values_list("category_id", flat=True).distinct()
+        affected = 0
+        for cat_id in categories:
+            waiting = tokens_qs.filter(category_id=cat_id, status="waiting").order_by("queue_position")
+            first = waiting.first()
+            if first:
+                first.status = "called"
+                first.save()
+                affected += 1
+        return Response({"status": "resumed", "affected": affected})
+    elif action == "clear":
+        count = tokens_qs.count()
+        tokens_qs.delete()
+        return Response({"status": "cleared", "affected": count})
+
 

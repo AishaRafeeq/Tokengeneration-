@@ -48,15 +48,22 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        categories = validated_data.pop("category_ids", [])
-        password = validated_data.pop("password", None)
-        user = User(**validated_data)
-        if password:
-            user.set_password(password)
+      categories = validated_data.pop("category_ids", [])
+      password = validated_data.pop("password", None)
+      user = User(**validated_data)
+    
+      # Ensure staff users can log in
+      if validated_data.get("role") == "staff":
+        user.is_staff = True
+    
+      if password:
+        user.set_password(password)
         user.save()
-        if categories:
-            user.categories.set(categories)
-        return user
+    
+      if categories:
+        user.categories.set(categories)
+      return user
+
 
     def update(self, instance, validated_data):
         categories = validated_data.pop("category_ids", None)
