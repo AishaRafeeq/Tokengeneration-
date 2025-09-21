@@ -7,20 +7,15 @@ from .views import (
     QRScanViewSet,
     QRSettingsViewSet,
     AuditLogViewSet,
-    dashboard_overview,
-    operational_report,
+   
     category_summary,
     session_info,
-    quick_actions,
+    
     my_user_summary,
-    scan_activity_report,
-    verification_logs,
-    operational_report,
-    staff_tasks_overview,
+   
     category_management,
     scan_count,
-    staff_activity,
-    daily_scan_report,
+    
     queue_emergency
 )
 
@@ -42,15 +37,14 @@ urlpatterns = [
 
     # Additional non-ViewSet endpoints
     path('my-summary/', my_user_summary, name='my-user-summary'),
-    path('dashboard/', dashboard_overview, name='dashboard-overview'),
-    path('reports/operational/', operational_report, name='operational-report'),
+   
     path('category-summary/', category_summary, name='category-summary'),
     path('session/', session_info, name='session-info'),
-    path('quick-actions/', quick_actions, name='quick-actions'),
-    path('scan-activity/', scan_activity_report, name='scan-activity-report'),
-    path('verification-logs/', verification_logs, name='verification-logs'),
-    path('operational/', operational_report, name='operational-report'),
-    path('staff-tasks/', staff_tasks_overview, name='staff-tasks-overview'),
+   
+    
+    
+    
+    
     path('admin-generate/', TokenViewSet.as_view({'post': 'admin_generate'}), name='admin-generate-token'),
     path('public/<str:token_id>/', TokenViewSet.as_view({'get': 'public'}), name='public-token-retrieve'),
     path('public-generate/', TokenViewSet.as_view({'post': 'public_generate'}), name='public-generate-token'),
@@ -64,10 +58,10 @@ urlpatterns += [
     path('tokens/verify-qr/', TokenViewSet.as_view({'post': 'verify_qr'}), name='verify-qr'),
     path('tokens/qr-settings/', TokenViewSet.as_view({'get': 'qr_settings', 'post': 'qr_settings'}), name='qr-settings'),
     path('categories/manage/', category_management, name='category-management'),
-    path('tokens/staff-call-next/', TokenViewSet.as_view({'post': 'staff_call_next'}), name='staff-call-next'),
+    
     path('tokens/staff-queue/', TokenViewSet.as_view({'get': 'staff_queue'}), name='staff-queue'),
     path('scan-count/', scan_count, name='scan-count'),
-    path('staff-activity/', staff_activity, name='staff-activity'),
-    path('tokens/daily-scan-report/', daily_scan_report, name='daily-scan-report'),
+   
+    
     path('queue/emergency/', queue_emergency, name='queue-emergency'),
 ]

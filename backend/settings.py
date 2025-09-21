@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+from django.utils import timezone  # Import timezone
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -169,10 +170,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
+TIME_ZONE = 'Asia/Kolkata'  # or your local timezone
 USE_TZ = True
 
 
@@ -214,4 +212,6 @@ WHITENOISE_ADD_HEADERS_FUNCTION = "backend.whitenoise_headers.add_headers"
 
 def add_headers(headers, path, url):
     headers["Access-Control-Allow-Origin"] = "*"
+
+
 

@@ -113,6 +113,7 @@ class QRScan(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     device_type = models.CharField(max_length=50, blank=True)
+    scan_count = models.IntegerField(default=1)
     verification_status = models.CharField(
         max_length=32,
         choices=(('SUCCESS', 'SUCCESS'), ('FAILED', 'FAILED')),
