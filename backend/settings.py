@@ -25,12 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&'
 
-# SECURITY WARNING: don't run with debug turned on in production!
+
 DEBUG = True
 
-# -----------------------------
-# Hosts
-# -----------------------------
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
@@ -40,9 +38,7 @@ ALLOWED_HOSTS = [
     "tokengeneration-f665.onrender.com",
 ]
 
-# -----------------------------
-# CORS Settings
-# -----------------------------
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -53,7 +49,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://tokengeneration-f665.onrender.com",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False  # Recommended for production
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -80,9 +76,7 @@ CORS_EXPOSE_HEADERS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# -----------------------------
-# Application definition
-# -----------------------------
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -101,7 +95,7 @@ INSTALLED_APPS = [
     'settings',
     'sidebar',
     'corsheaders',
-]
+]  # Removed the extra + ['corsheaders']
 
 AUTH_USER_MODEL = 'users.User'  # Custom User model
 
@@ -137,9 +131,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# -----------------------------
-# Database
-# -----------------------------
+
 DATABASES = {
     'default': dj_database_url.parse(
         'postgresql://token_generation_user:ieG46Xx3oAebVHrIpC2zF7abgRh8Y9Iy@dpg-d30o4395pdvs7388oh90-a.oregon-postgres.render.com/token_generation',
@@ -148,9 +140,7 @@ DATABASES = {
     )
 }
 
-# -----------------------------
-# Password validation
-# -----------------------------
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -166,16 +156,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# -----------------------------
-# Internationalization
-# -----------------------------
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True
 
-# -----------------------------
-# Static and Media files
-# -----------------------------
+
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
@@ -183,9 +169,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# -----------------------------
-# REST Framework
-# -----------------------------
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication', 
@@ -196,9 +180,7 @@ REST_FRAMEWORK = {
     ),
 }
 
-# -----------------------------
-# CSRF Trusted Origins
-# -----------------------------
+
 CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-backend.onrender.com",
     "https://tokengeneration-backend-1.onrender.com",
@@ -206,15 +188,11 @@ CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-f665.onrender.com"
 ]
 
-# -----------------------------
-# Whitenoise Headers for Static/Media
-# -----------------------------
+
 WHITENOISE_ADD_HEADERS_FUNCTION = "backend.whitenoise_headers.add_headers"
 
 def add_headers(headers, path, url):
     headers["Access-Control-Allow-Origin"] = "*"
 
-# -----------------------------
-# Default primary key field type
-# -----------------------------
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
