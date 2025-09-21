@@ -1,13 +1,13 @@
-Django>=4.2
-djangorestframework
+Django>=4.2,<5.3
+djangorestframework>=3.14
 djangorestframework-simplejwt
 channels
-daphne
-Pillow
-psycopg2-binary
-django-cors-headers
-django-filter
-qrcode
+daphne>=4.0
+Pillow>=10.0
+psycopg2-binary>=2.9
+django-cors-headers>=4.0
+django-filter>=23.0
+qrcode>=7.4
 drf-yasg
 python-dotenv
 # For QR code image generation and manipulation
@@ -22,5 +22,5 @@ pytest-django
 
 dj_database_url
 
-whitenoise
+whitenoise>=6.0
 # Add any other dependencies your project uses below
