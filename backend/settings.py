@@ -36,6 +36,7 @@ ALLOWED_HOSTS = [
     "tokengeneration-backend-1.onrender.com",
     "public-token-generate.netlify.app",
     "tokengeneration-f665.onrender.com",
+    "https://frontend-tokengen.netlify.app",
 ]
 
 
@@ -47,6 +48,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://public-display.netlify.app",
     "https://token-public-display.netlify.app", 
     "https://tokengeneration-f665.onrender.com",
+    "https://frontend-tokengen.netlify.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
