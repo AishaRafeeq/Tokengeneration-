@@ -7,10 +7,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV DJANGO_SETTINGS_MODULE=backend.settings
 ENV TZ=Asia/Kolkata
 
-# Set working directory
+
 WORKDIR /app
 
-# Install dependencies
+
 RUN apt-get update --fix-missing \
     && apt-get install -y --no-install-recommends \
         apt-transport-https \
@@ -22,30 +22,30 @@ RUN apt-get update --fix-missing \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure timezone
+
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Install Python dependencies
+
 COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Copy project files
+
 COPY . ./
 
-# Create static & media directories BEFORE collectstatic
+
 RUN mkdir -p /app/staticfiles /app/media/qrcodes
 
-# Collect static files
+
 RUN python manage.py collectstatic --noinput
 
-# Create non-root user and fix permissions
+
 RUN adduser --disabled-password --no-create-home appuser \
     && chown -R appuser:appuser /app/media /app/staticfiles
 
-# Switch to non-root user
+
 USER appuser
 
-# Expose port and run Daphne
+
 EXPOSE 8000
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
