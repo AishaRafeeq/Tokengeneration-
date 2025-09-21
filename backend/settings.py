@@ -28,15 +28,21 @@ SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# -----------------------------
+# Hosts
+# -----------------------------
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "tokengeneration-backend.onrender.com",
     "tokengeneration-backend-1.onrender.com",
-    "https://public-token-generate.netlify.app",
-     "https://tokengeneration-f665.onrender.com",
+    "public-token-generate.netlify.app",
+    "tokengeneration-f665.onrender.com",
 ]
 
+# -----------------------------
+# CORS Settings
+# -----------------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -44,10 +50,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://public-token-generate.netlify.app",
     "https://public-display.netlify.app",
     "https://token-public-display.netlify.app", 
-     "https://tokengeneration-f665.onrender.com", # <-- Corrected line
+    "https://tokengeneration-f665.onrender.com",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False  # (recommended for production)
+CORS_ALLOW_ALL_ORIGINS = False  # Recommended for production
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -74,8 +80,9 @@ CORS_EXPOSE_HEADERS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# -----------------------------
 # Application definition
-
+# -----------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -84,37 +91,32 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'import_export',
-
     'rest_framework',
-'qr_code',
+    'qr_code',
     'users',
     'categories',
     'tokens',
     'scans',
     'reports',
     'settings',
-     'sidebar',
-     'corsheaders',
+    'sidebar',
+    'corsheaders',
 ]
 
 AUTH_USER_MODEL = 'users.User'  # Custom User model
 
-
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # ✅ must be first
+    'corsheaders.middleware.CorsMiddleware',  # Must be first
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'backend.middleware.MediaCORSMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -135,10 +137,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-
+# -----------------------------
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# -----------------------------
 DATABASES = {
     'default': dj_database_url.parse(
         'postgresql://token_generation_user:ieG46Xx3oAebVHrIpC2zF7abgRh8Y9Iy@dpg-d30o4395pdvs7388oh90-a.oregon-postgres.render.com/token_generation',
@@ -147,10 +148,9 @@ DATABASES = {
     )
 }
 
-
+# -----------------------------
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+# -----------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -166,43 +166,39 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+# -----------------------------
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# -----------------------------
 LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'Asia/Kolkata'  # or your local timezone
+TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
+# -----------------------------
+# Static and Media files
+# -----------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+# -----------------------------
+# REST Framework
+# -----------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication', 
         'rest_framework.authentication.SessionAuthentication',  # Keep session for admin
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',  # default
+        'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
+# -----------------------------
+# CSRF Trusted Origins
+# -----------------------------
 CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-backend.onrender.com",
     "https://tokengeneration-backend-1.onrender.com",
@@ -210,11 +206,15 @@ CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-f665.onrender.com"
 ]
 
-# Add this to set CORS headers for static/media files
+# -----------------------------
+# Whitenoise Headers for Static/Media
+# -----------------------------
 WHITENOISE_ADD_HEADERS_FUNCTION = "backend.whitenoise_headers.add_headers"
 
 def add_headers(headers, path, url):
     headers["Access-Control-Allow-Origin"] = "*"
 
-
-
+# -----------------------------
+# Default primary key field type
+# -----------------------------
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
