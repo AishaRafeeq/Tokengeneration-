@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DJANGO_SETTINGS_MODULE=backend.settings
+ENV TZ=Asia/Kolkata
 
 # Set working directory
 WORKDIR /app
@@ -17,8 +18,12 @@ RUN apt-get update --fix-missing \
         build-essential \
         libpq-dev \
         netcat-openbsd \
+        tzdata \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Install Python dependencies
 COPY requirements.txt ./
