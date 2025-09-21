@@ -30,8 +30,4 @@ urlpatterns = [
     path('api/sidebar/', include('sidebar.urls')),
     path('api/', include(router.urls)),
     re_path(r'^app/admin/?$', lambda request: redirect('/admin/', permanent=True)),
-]
-
-# Serve media files only in development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
