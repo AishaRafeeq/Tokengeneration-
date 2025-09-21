@@ -13,7 +13,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&'
 
-DEBUG = True
+# ---------------- Debug ---------------- #
+DEBUG = False  # ⚠️ Always False in production
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -37,7 +38,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://frontend-tokengen.netlify.app",
 ]
 
-# ⚠️ Removed CORS_ALLOW_ALL_ORIGINS=True (conflicts in prod)
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -134,12 +134,11 @@ USE_TZ = True
 # ---------------- Static & Media ---------------- #
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
-# ✅ Fix: use absolute URL for media with HTTPS
-MEDIA_URL = "https://tokengeneration-backend.onrender.com/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Use HTTPS for media URLs
+MEDIA_URL = "https://tokengeneration-backend.onrender.com/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Persist container media or use object storage
 
 # ---------------- REST Framework ---------------- #
 REST_FRAMEWORK = {
@@ -152,7 +151,7 @@ REST_FRAMEWORK = {
     ),
 }
 
-# ✅ JWT Refresh logic
+# ---------------- JWT ---------------- #
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -173,9 +172,14 @@ CSRF_TRUSTED_ORIGINS = [
 # ---------------- WhiteNoise ---------------- #
 WHITENOISE_ADD_HEADERS_FUNCTION = add_headers
 
-# ---------------- HTTPS Fix ---------------- #
+# ---------------- HTTPS ---------------- #
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
 USE_X_FORWARDED_HOST = True
+
+# ---------------- Docker / Production Media Fix ---------------- #
+# Ensure media directory exists for QR code generation
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
