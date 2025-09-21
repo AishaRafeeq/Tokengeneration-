@@ -32,10 +32,15 @@ from .utils import generate_colored_qr_code
 def is_within_generation_time():
     settings = QRSettings.objects.first()
     now = timezone.localtime()
+    now_time = now.time()
     start = settings.generation_start_time
     end = settings.generation_end_time
-    print("DEBUG:", "Now:", now.time(), "Start:", start, "End:", end)
-    return start <= now.time() <= end
+    print("DEBUG:", "Now:", now_time, "Start:", start, "End:", end)
+    if start < end:
+        return start <= now_time <= end
+    else:
+        # Overnight window (e.g., 22:00 to 06:00)
+        return now_time >= start or now_time <= end
 
 class TokenViewSet(viewsets.ModelViewSet):
     queryset = Token.objects.all().order_by("queue_position")
