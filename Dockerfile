@@ -26,15 +26,18 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 
-# ... earlier steps (install deps, copy code, collectstatic)
 COPY . ./
 
+
+# Collect static files
 RUN python manage.py collectstatic --noinput
 
-# create media dir and give ownership to appuser
+
+# Create media dir and give ownership to appuser
 RUN mkdir -p /app/media/qrcodes \
     && adduser --disabled-password --no-create-home appuser \
     && chown -R appuser:appuser /app/media /app/staticfiles
+
 
 # switch to non-root user
 USER appuser
