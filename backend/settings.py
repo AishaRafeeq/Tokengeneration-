@@ -137,8 +137,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Use HTTPS for media URLs
-MEDIA_URL = "https://tokengeneration-backend.onrender.com/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Persist container media or use object storage
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/app/media'
 
 # ---------------- REST Framework ---------------- #
 REST_FRAMEWORK = {
