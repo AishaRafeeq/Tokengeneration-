@@ -41,6 +41,3 @@ USER appuser
 
 EXPOSE 8000
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
-
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
