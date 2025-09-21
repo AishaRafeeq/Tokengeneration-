@@ -1,4 +1,4 @@
-# Use official Python slim image
+# Base image
 FROM python:3.12-slim
 
 # Environment variables
@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV DJANGO_SETTINGS_MODULE=backend.settings
 ENV TZ=Asia/Kolkata
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -25,31 +26,29 @@ RUN apt-get update --fix-missing \
 # Set timezone
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Install Python dependencies
+# Create app user first
+RUN adduser --disabled-password --no-create-home appuser
+
+# Copy requirements and install Python packages
 COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Copy project
+# Copy project files
 COPY . ./
 
-# Create static and media directories
+# Create static & media directories and give ownership to appuser
 RUN mkdir -p /app/staticfiles /app/media/qrcodes \
-    && chown -R appuser:appuser /app/media /app/staticfiles
+    && chown -R appuser:appuser /app/staticfiles /app/media
 
-# Make media persistent
-VOLUME /app/media
+# Switch to non-root user
+USER appuser
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Create a non-root user
-RUN adduser --disabled-password --no-create-home appuser \
-    && chown -R appuser:appuser /app
-
-USER appuser
-
+# Expose port
 EXPOSE 8000
 
-# Run ASGI server
+# Start the server with Daphne
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
