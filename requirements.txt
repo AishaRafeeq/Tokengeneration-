@@ -10,7 +10,9 @@ django-filter>=23.0
 qrcode>=7.4
 drf-yasg
 python-dotenv
-# For QR code image generation and manipulation
+django-import-export
+
+
 reportlab
 # For admin UI enhancements (optional)
 django-admin-interface
