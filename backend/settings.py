@@ -33,8 +33,8 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "tokengeneration-backend.onrender.com",
     "tokengeneration-backend-1.onrender.com",
-    "https://public-token-generate.netlify.app"
-     "https://tokengeneration-f665.onrender.com"
+    "https://public-token-generate.netlify.app",
+     "https://tokengeneration-f665.onrender.com",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -43,7 +43,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://public-token-generate.netlify.app",
     "https://public-display.netlify.app",
-    "https://token-public-display.netlify.app",  # <-- Corrected line
+    "https://token-public-display.netlify.app", 
+     "https://tokengeneration-f665.onrender.com", # <-- Corrected line
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False  # (recommended for production)
