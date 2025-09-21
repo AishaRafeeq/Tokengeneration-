@@ -18,6 +18,8 @@ from .views import (
     
     queue_emergency
 )
+from django.conf import settings
+from django.conf.urls.static import static
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
@@ -64,4 +66,4 @@ urlpatterns += [
    
     
     path('queue/emergency/', queue_emergency, name='queue-emergency'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
