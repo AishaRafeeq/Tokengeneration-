@@ -34,6 +34,7 @@ ALLOWED_HOSTS = [
     "tokengeneration-backend.onrender.com",
     "tokengeneration-backend-1.onrender.com",
     "https://public-token-generate.netlify.app"
+     "https://tokengeneration-f665.onrender.com"
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -204,7 +205,8 @@ REST_FRAMEWORK = {
 CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-backend.onrender.com",
     "https://tokengeneration-backend-1.onrender.com",
-    "https://public-token-generate.netlify.app"
+    "https://public-token-generate.netlify.app",
+    "https://tokengeneration-f665.onrender.com"
 ]
 
 # Add this to set CORS headers for static/media files
