@@ -7,7 +7,6 @@ from rest_framework_simplejwt.views import (
 )
 from django.conf import settings
 from django.conf.urls.static import static
-
 from rest_framework.routers import DefaultRouter
 from tokens.views import TokenViewSet
 
@@ -24,7 +23,6 @@ urlpatterns = [
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('users.urls')),
-    # path('api/categories/', include('categories.urls')),
     path('api/tokens/', include('tokens.urls')),
     path('api/scans/', include('scans.urls')),
     path('api/reports/', include('reports.urls')),
@@ -32,4 +30,8 @@ urlpatterns = [
     path('api/sidebar/', include('sidebar.urls')),
     path('api/', include(router.urls)),
     re_path(r'^app/admin/?$', lambda request: redirect('/admin/', permanent=True)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# Serve media files only in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
