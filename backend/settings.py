@@ -24,6 +24,7 @@ ALLOWED_HOSTS = [
     "tokengeneration-f665.onrender.com",
     "frontend-tokengen.netlify.app",
     "public-token-generate.netlify.app",
+    "https://tokengen-react.onrender.com",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -35,6 +36,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://token-public-display.netlify.app", 
     "https://tokengeneration-f665.onrender.com",
     "https://frontend-tokengen.netlify.app",
+    "https://tokengen-react.onrender.com",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -166,6 +168,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://tokengeneration-f665.onrender.com",
     "https://public-token-generate.netlify.app",
     "https://frontend-tokengen.netlify.app",
+    "https://tokengen-react.onrender.com",
 ]
 
 # ---------------- WhiteNoise ---------------- #
