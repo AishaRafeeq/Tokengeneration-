@@ -10,11 +10,11 @@ from backend.whitenoise_headers import add_headers  # ✅ import callable
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+
 SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&'
 
-# ---------------- Debug ---------------- #
-DEBUG = False  # ⚠️ Always False in production
+
+DEBUG = False  
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -26,7 +26,6 @@ ALLOWED_HOSTS = [
     "public-token-generate.netlify.app",
 ]
 
-# ---------------- CORS ---------------- #
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -173,9 +172,6 @@ CSRF_TRUSTED_ORIGINS = [
 WHITENOISE_ADD_HEADERS_FUNCTION = add_headers
 
 # ---------------- HTTPS ---------------- #
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = True
-USE_X_FORWARDED_HOST = True
 
 # ---------------- Docker / Production Media Fix ---------------- #
 # Ensure media directory exists for QR code generation

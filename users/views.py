@@ -322,9 +322,27 @@ def staff_dashboard_stats(request):
 @permission_classes([IsAuthenticated])
 def scanner_status(request):
     """
-    Returns latest scanner data for all QR scans.
+    Returns latest scanner data for all QR scans, with optional filters:
+    - status: 'SUCCESS' or 'FAILED'
+    - from: start date (YYYY-MM-DD)
+    - to: end date (YYYY-MM-DD)
     """
-    scans = QRScan.objects.select_related('qr', 'qr__category', 'scanned_by').order_by('-scan_time')[:100]
+    status_filter = request.GET.get("status") 
+    from_date = request.GET.get("from")       
+    to_date = request.GET.get("to")            
+
+    scans = QRScan.objects.select_related('qr', 'qr__category', 'scanned_by')
+
+    if status_filter in ["SUCCESS", "FAILED"]:
+        scans = scans.filter(verification_status=status_filter)
+
+    if from_date:
+        scans = scans.filter(scan_time__date__gte=from_date)
+    if to_date:
+        scans = scans.filter(scan_time__date__lte=to_date)
+
+    scans = scans.order_by('-scan_time')[:100]
+
     data = []
     for scan in scans:
         data.append({
