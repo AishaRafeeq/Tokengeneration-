@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.shortcuts import redirect
+from django.http import HttpResponse
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -13,12 +14,17 @@ from tokens.views import TokenViewSet
 router = DefaultRouter()
 router.register(r'tokens', TokenViewSet, basename='token')
 
-# Change the admin site header and title
+
 admin.site.site_header = "Token Generation Application"
 admin.site.site_title = "Token Generation Application"
 admin.site.index_title = "Welcome to the Token Generation Admin"
 
+
+def home(request):
+    return HttpResponse("✅ API Server is running. Welcome to QR Token System.")
+
 urlpatterns = [
+    path('', home),  
     path('admin/', admin.site.urls),
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

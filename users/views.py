@@ -601,8 +601,8 @@ def staff_operational_report(request):
 
     
     report = {
-        "staff": staff_user.username,
-        "date": str(today),
+        "Username": staff_user.username,
+        "Report date": str(today),
         "categories": [c.name for c in categories],
         "tokens": {
             "total": total_tokens,
@@ -613,7 +613,7 @@ def staff_operational_report(request):
             "total": total_scans,
             "success": success_scans,
             "failed": failed_scans,
-            "success_rate": success_rate,
+            
         }
     }
 

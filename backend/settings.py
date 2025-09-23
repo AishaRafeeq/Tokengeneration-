@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 import dj_database_url
 from datetime import timedelta
-from backend.whitenoise_headers import add_headers  # ✅ import callable
+from backend.whitenoise_headers import add_headers 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,29 +14,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&'
 
 
-DEBUG = False  
+DEBUG = True 
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "tokengeneration-backend.onrender.com",
-    "tokengeneration-backend-1.onrender.com",
-    "tokengeneration-f665.onrender.com",
-    "frontend-tokengen.netlify.app",
-    "public-token-generate.netlify.app",
-    "https://tokengen-react.onrender.com",
+    # "tokengeneration-backend.onrender.com",
+    # "tokengeneration-backend-1.onrender.com",
+    # "tokengeneration-f665.onrender.com",
+    # "frontend-tokengen.netlify.app",
+    # "public-token-generate.netlify.app",
+    # "https://tokengen-react.onrender.com",
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:3000",
-    "https://public-token-generate.netlify.app",
-    "https://public-display.netlify.app",
-    "https://token-public-display.netlify.app", 
-    "https://tokengeneration-f665.onrender.com",
-    "https://frontend-tokengen.netlify.app",
-    "https://tokengen-react.onrender.com",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    # "https://public-token-generate.netlify.app",
+    # "https://public-display.netlify.app",
+    # "https://token-public-display.netlify.app", 
+    # "https://tokengeneration-f665.onrender.com",
+    # "https://frontend-tokengen.netlify.app",
+    # "https://tokengen-react.onrender.com",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -112,11 +116,10 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 # ---------------- Database ---------------- #
 DATABASES = {
-    "default": dj_database_url.parse(
-        "postgresql://token_generation_user:ieG46Xx3oAebVHrIpC2zF7abgRh8Y9Iy@dpg-d30o4395pdvs7388oh90-a.oregon-postgres.render.com/token_generation",
-        conn_max_age=600,
-        ssl_require=True,
-    )
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
 # ---------------- Auth ---------------- #
@@ -141,7 +144,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/app/media'
 
-# ---------------- REST Framework ---------------- #
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -163,12 +166,12 @@ SIMPLE_JWT = {
 
 # ---------------- CSRF ---------------- #
 CSRF_TRUSTED_ORIGINS = [
-    "https://tokengeneration-backend.onrender.com",
-    "https://tokengeneration-backend-1.onrender.com",
-    "https://tokengeneration-f665.onrender.com",
-    "https://public-token-generate.netlify.app",
-    "https://frontend-tokengen.netlify.app",
-    "https://tokengen-react.onrender.com",
+    # "https://tokengeneration-backend.onrender.com",
+    # "https://tokengeneration-backend-1.onrender.com",
+    # "https://tokengeneration-f665.onrender.com",
+    # "https://public-token-generate.netlify.app",
+    # "https://frontend-tokengen.netlify.app",
+    # "https://tokengen-react.onrender.com",
 ]
 
 # ---------------- WhiteNoise ---------------- #
