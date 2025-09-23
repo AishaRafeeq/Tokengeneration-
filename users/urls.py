@@ -11,7 +11,8 @@ from .views import (
     staff_dashboard_stats,
     scanner_status,
     daily_report,
-    staff_operational_report
+    staff_operational_report,
+    weekly_scan_chart
 )    
 from rest_framework.routers import DefaultRouter
 
@@ -31,4 +32,6 @@ urlpatterns = [
     path("scanner-status/", scanner_status, name="scanner-status"),
    path('daily-report/', daily_report, name='daily_report'),
    path('staff-operational-report/', staff_operational_report, name='staff-operational-report'),
+   path('weekly-scan-chart/', weekly_scan_chart, name='weekly-scan-chart'),
+
 ]

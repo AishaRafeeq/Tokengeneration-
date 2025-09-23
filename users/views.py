@@ -20,6 +20,7 @@ from reportlab.lib.pagesizes import A4
 from io import BytesIO
 from collections import defaultdict
 from django.db.models import Count
+from django.db.models.functions import TruncDate
 
 
 
@@ -618,10 +619,37 @@ def staff_operational_report(request):
     }
 
     return Response(report)
-    
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def weekly_scan_chart(request):
+    today = timezone.localdate()
+    start_date = today - timedelta(days=6)  # last 7 days including today
+
+    # Aggregate scans per day
+    scans = (
+        QRScan.objects.filter(scan_time__date__range=[start_date, today])
+        .annotate(day=TruncDate('scan_time'))
+        .values('day')
+        .annotate(count=Count('id'))
+        .order_by('day')
+    )
+
+    # Fill missing days with 0
+    chart_data = []
+    for i in range(7):
+        day = start_date + timedelta(days=i)
+        count = next((s['count'] for s in scans if s['day'] == day), 0)
+        chart_data.append({
+            "date": day.strftime("%a"),  # e.g., "Mon", "Tue"
+            "scans": count
+        })
+
+    return Response(chart_data)    
 class Command(BaseCommand):
     help = "Reset all tokens to initial state"
 
     def handle(self, *args, **kwargs):
         Token.objects.all().delete() 
         self.stdout.write(self.style.SUCCESS("All tokens have been reset."))
+
