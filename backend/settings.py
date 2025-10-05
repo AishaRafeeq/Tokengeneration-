@@ -37,6 +37,8 @@ CORS_ALLOWED_ORIGINS = [
     " https://sign-near-whose-professor.trycloudflare.com",
     " https://model-following-alot-revision.trycloudflare.com",
     " https://practitioners-semester-assumed-attention.trycloudflare.com "
+    "https://tokengeneration-public.onrender.com"
+    "https://tokengeneration-f665.onrender.com"
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -174,16 +176,14 @@ CSRF_TRUSTED_ORIGINS = [
     "https://conduct-footage-jeremy-opinion.trycloudflare.com",
     "https://geometry-sympathy-investigated-ratings.trycloudflare.com",
     "https://practitioners-semester-assumed-attention.trycloudflare.com"
+    "https://tokengeneration-f665.onrender.com"
 ]
 
 
 # ---------------- WhiteNoise ---------------- #
 WHITENOISE_ADD_HEADERS_FUNCTION = add_headers
 
-# ---------------- HTTPS ---------------- #
-
-# ---------------- Docker / Production Media Fix ---------------- #
-# Ensure media directory exists for QR code generation
+ion
 if not os.path.exists(MEDIA_ROOT):
     os.makedirs(MEDIA_ROOT, exist_ok=True)
 
