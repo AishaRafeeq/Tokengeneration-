@@ -10,14 +10,13 @@ from backend.whitenoise_headers import add_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 SECRET_KEY = 'django-insecure-gfcnu368d&5af0a@x(ns0&nwq+_2buu68u_q7k%91+(wrpr5j&'
-
 
 DEBUG = True 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
+# ---------------- CORS ---------------- #
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -26,20 +25,16 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3002",
     "http://localhost:3003",
     "http://localhost:3004",
-    # "https://public-token-generate.netlify.app",
-    # "https://public-display.netlify.app",
-    # "https://token-public-display.netlify.app", 
-    # "https://tokengeneration-f665.onrender.com",
-    # "https://frontend-tokengen.netlify.app",
-    # "https://tokengen-react.onrender.com",
-    " https://conduct-footage-jeremy-opinion.trycloudflare.com ",
+
+    # Deployed domains
+    "https://public-token-generate.netlify.app",
+    "https://tokengeneration-f665.onrender.com",
+    "https://tokengeneration-public.onrender.com",
+    "https://practitioners-semester-assumed-attention.trycloudflare.com",
+    "https://conduct-footage-jeremy-opinion.trycloudflare.com",
     "https://geometry-sympathy-investigated-ratings.trycloudflare.com",
-    " https://sign-near-whose-professor.trycloudflare.com",
-    " https://model-following-alot-revision.trycloudflare.com",
-    " https://practitioners-semester-assumed-attention.trycloudflare.com "
-    "https://tokengeneration-public.onrender.com"
-    "https://tokengeneration-f665.onrender.com"
-    "https://public-token-generate.netlify.app"
+    "https://sign-near-whose-professor.trycloudflare.com",
+    "https://model-following-alot-revision.trycloudflare.com",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -66,9 +61,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third-party
     "import_export",
     "rest_framework",
+    "corsheaders",
     "qr_code",
+
+    # Local apps
     "users",
     "categories",
     "tokens",
@@ -76,7 +76,6 @@ INSTALLED_APPS = [
     "reports",
     "settings",
     "sidebar",
-    "corsheaders",
 ]
 
 AUTH_USER_MODEL = "users.User"  # Custom User model
@@ -139,11 +138,10 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Use HTTPS for media URLs
-MEDIA_URL = '/media/'
-MEDIA_ROOT = '/app/media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = "/app/media"
 
-
+# ---------------- DRF ---------------- #
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -164,23 +162,16 @@ SIMPLE_JWT = {
 }
 
 # ---------------- CSRF ---------------- #
-# CSRF_TRUSTED_ORIGINS = [
-    # "https://tokengeneration-backend.onrender.com",
-    # "https://tokengeneration-backend-1.onrender.com",
-    # "https://tokengeneration-f665.onrender.com",
-    # "https://public-token-generate.netlify.app",
-    # "https://frontend-tokengen.netlify.app",
-    # "https://tokengen-react.onrender.com",
-    
-# ]
 CSRF_TRUSTED_ORIGINS = [
+    "https://public-token-generate.netlify.app",
+    "https://tokengeneration-f665.onrender.com",
+    "https://tokengeneration-public.onrender.com",
+    "https://practitioners-semester-assumed-attention.trycloudflare.com",
     "https://conduct-footage-jeremy-opinion.trycloudflare.com",
     "https://geometry-sympathy-investigated-ratings.trycloudflare.com",
-    "https://practitioners-semester-assumed-attention.trycloudflare.com"
-    "https://tokengeneration-f665.onrender.com"
-    "https://public-token-generate.netlify.app"
+    "https://sign-near-whose-professor.trycloudflare.com",
+    "https://model-following-alot-revision.trycloudflare.com",
 ]
-
 
 # ---------------- WhiteNoise ---------------- #
 WHITENOISE_ADD_HEADERS_FUNCTION = add_headers
