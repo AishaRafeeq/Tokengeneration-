@@ -183,7 +183,6 @@ CSRF_TRUSTED_ORIGINS = [
 # ---------------- WhiteNoise ---------------- #
 WHITENOISE_ADD_HEADERS_FUNCTION = add_headers
 
-ion
 if not os.path.exists(MEDIA_ROOT):
     os.makedirs(MEDIA_ROOT, exist_ok=True)
 
