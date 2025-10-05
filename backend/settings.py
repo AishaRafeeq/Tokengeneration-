@@ -39,6 +39,7 @@ CORS_ALLOWED_ORIGINS = [
     " https://practitioners-semester-assumed-attention.trycloudflare.com "
     "https://tokengeneration-public.onrender.com"
     "https://tokengeneration-f665.onrender.com"
+    "https://public-token-generate.netlify.app"
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -177,6 +178,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://geometry-sympathy-investigated-ratings.trycloudflare.com",
     "https://practitioners-semester-assumed-attention.trycloudflare.com"
     "https://tokengeneration-f665.onrender.com"
+    "https://public-token-generate.netlify.app"
 ]
 
 
