@@ -26,7 +26,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3003",
     "http://localhost:3004",
 
-    # Deployed domains
+    "https://tokengen-react.onrender.com"
     "https://public-token-generate.netlify.app",
     "https://tokengeneration-f665.onrender.com",
     "https://tokengeneration-public.onrender.com",
@@ -112,10 +112,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# ---------------- Database ---------------- #
 
-
-# ---------------- Database ---------------- #
 # ---------------- Database ---------------- #
 DATABASES = {
     "default": {
@@ -126,7 +123,7 @@ DATABASES = {
         "HOST": "dpg-d4083hruibrs73b4t4vg-a.oregon-postgres.render.com",
         "PORT": "5432",
         "OPTIONS": {
-            "sslmode": "require",  # ensures SSL connection to Render
+            "sslmode": "require",  
         },
         "CONN_MAX_AGE": 600,
     }
