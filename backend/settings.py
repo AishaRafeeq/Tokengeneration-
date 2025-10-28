@@ -115,13 +115,24 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # ---------------- Database ---------------- #
 
 
+# ---------------- Database ---------------- #
+# ---------------- Database ---------------- #
 DATABASES = {
-    "default": dj_database_url.config(
-        default="postgresql://token_generation_user:ieG46Xx3oAebVHrIpC2zF7abgRh8Y9Iy@dpg-d30o4395pdvs7388oh90-a.oregon-postgres.render.com/token_generation",
-        conn_max_age=600,
-        ssl_require=True
-    )
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "tokengen_db",
+        "USER": "tokengen_db_user",
+        "PASSWORD": "IXOgVyojhfQCNZcsBJdknqmFuQK6sHuc",
+        "HOST": "dpg-d4083hruibrs73b4t4vg-a.oregon-postgres.render.com",
+        "PORT": "5432",
+        "OPTIONS": {
+            "sslmode": "require",  # ensures SSL connection to Render
+        },
+        "CONN_MAX_AGE": 600,
+    }
 }
+
+
 
 
 # ---------------- Auth ---------------- #
