@@ -25,7 +25,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3002",
     "http://localhost:3003",
     "http://localhost:3004",
-
+    "https://public-display.onrender.com",
     "https://tokengen-react.onrender.com",
     "https://public-token-generate.netlify.app",
     "https://tokengeneration-f665.onrender.com",
